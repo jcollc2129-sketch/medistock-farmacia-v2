@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medistock-v25';
+const CACHE_NAME = 'medistock-v26';
 const ASSETS = [
   './',
   './index.html',
@@ -12,6 +12,7 @@ const ASSETS = [
   './icon-192.png',
   './icon-512.png',
   './bg-medical.jpg',
+  './header-doodles.png',
   'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
   'https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js'
 ];
