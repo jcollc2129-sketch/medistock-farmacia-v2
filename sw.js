@@ -20,7 +20,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS).catch(err => {
-        console.log('Cache addAll partial fail:', err);
+        console.log('Cache addAll partial fail (normal if offline first time):', err);
       });
     })
   );

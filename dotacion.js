@@ -1,0 +1,569 @@
+// Dotación mínima de medicamentos (sin nombre comercial)
+// Fuente: listado de dotación para centros >300 hombres
+const DOTACION_MINIMA = [
+  { grupo: "MUCOLÍTICOS, DESCONGESTIVOS", principioActivo: "Acetilcisteína", dosis: "200 mg", categoria: "sobres", presentacion: "E/30 Sobres", stockMinimo: 240 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Aciclovir", dosis: "5 %", categoria: "crema", presentacion: "Tubo 2 gr.", stockMinimo: 16 },
+  { grupo: "ANTIVIRALES", principioActivo: "Aciclovir", dosis: "200 mg", categoria: "comprimidos", presentacion: "E/25 Comp.", stockMinimo: 100 },
+  { grupo: "ANTISEP., DESINFECT.", principioActivo: "Agua Oxigenada", dosis: "10 Vol.", categoria: "otros", presentacion: "E/250 ml.", stockMinimo: 16 },
+  { grupo: "ANTISEP., DESINFECT.", principioActivo: "Alcohol 70°", dosis: "70°", categoria: "otros", presentacion: "E/1000 ml.", stockMinimo: 8 },
+  { grupo: "GINECOLÓGICO", principioActivo: "Aluminio potasio-sulfato/Benzalconio", dosis: "8 gr. / 600 mg.", categoria: "otros", presentacion: "E/500 ml.", stockMinimo: 4 },
+  { grupo: "HEMOSTATICOS", principioActivo: "Aminocapróico ácido", dosis: "4 gr.", categoria: "ampollas", presentacion: "E/6 Ampollas", stockMinimo: 20 },
+  { grupo: "CARDIOLÓGICOS", principioActivo: "Amiodarona", dosis: "150 mg.", categoria: "vial", presentacion: "E/5 Ampollas", stockMinimo: 24 },
+  { grupo: "ANTIHIPERTENSIVOS", principioActivo: "Amlodipino", dosis: "5 mg.", categoria: "comprimidos", presentacion: "E/30 Comp.", stockMinimo: 120 },
+  { grupo: "ANTIBIOTICOS", principioActivo: "Amoxicilina", dosis: "500 mg.", categoria: "capsulas", presentacion: "E/20 Cápsulas", stockMinimo: 480 },
+  { grupo: "ANTIBIOTICOS", principioActivo: "Amoxicilina/Clavulánico", dosis: "875 mg. / 125 mg.", categoria: "sobres", presentacion: "E/12 Sobres", stockMinimo: 240 },
+  { grupo: "OFTALMOLÓGICOS", principioActivo: "Antibiótico-Dexametasona", dosis: "", categoria: "oftalmologico", presentacion: "E/10 Unidosis", stockMinimo: 40 },
+  { grupo: "ANTICATARRALES, ANTIGRIPALES", principioActivo: "Antigripales", dosis: "", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 1200 },
+  { grupo: "ANTIHEMORROIDALES", principioActivo: "Antihemorroidal", dosis: "", categoria: "crema", presentacion: "Tubo 30 gr.", stockMinimo: 8 },
+  { grupo: "AINE.s", principioActivo: "Aspirina", dosis: "500 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 600 },
+  { grupo: "CARDIOLÓGICOS", principioActivo: "Atropina", dosis: "1/1000", categoria: "ampollas", presentacion: "E/10 Ampollas", stockMinimo: 40 },
+  { grupo: "ANTIBIOTICOS", principioActivo: "Azitromicina", dosis: "500 mg.", categoria: "comprimidos", presentacion: "E/3 Comp.", stockMinimo: 16 },
+  { grupo: "ANTIBIOTICOS", principioActivo: "Bencilpenicilina-Benzatina", dosis: "2.400.000 UI", categoria: "vial", presentacion: "E/1 Vial", stockMinimo: 16 },
+  { grupo: "ANESTESICOS LOCALES", principioActivo: "Benzocaína", dosis: "5 %", categoria: "otros", presentacion: "E/5 ml.", stockMinimo: 8 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Betametasona / Gentamicina", dosis: "0,5 / 1 mg.", categoria: "crema", presentacion: "Tubo 30 gr.", stockMinimo: 12 },
+  { grupo: "ANTIPARKINSONIANO", principioActivo: "Biperideno", dosis: "5 mg.", categoria: "vial", presentacion: "E/5 Ampollas 1 ml.", stockMinimo: 20 },
+  { grupo: "ANTITUSIVOS", principioActivo: "Bronquial DEF", dosis: "", categoria: "otros", presentacion: "E/125 Mililitros", stockMinimo: 20 },
+  { grupo: "BUCOFARINGEOS", principioActivo: "Bucofaringeos", dosis: "", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 400 },
+  { grupo: "ESPASMOLITICOS", principioActivo: "Butalpina compuesta", dosis: "20/2500 mg.", categoria: "ampollas", presentacion: "E/10 Ampollas", stockMinimo: 40 },
+  { grupo: "ESPASMOLITICOS", principioActivo: "Butilescopolamina, bromuro", dosis: "10 mg.", categoria: "comprimidos", presentacion: "E/60 Grageas", stockMinimo: 240 },
+  { grupo: "ESPASMOLITICOS", principioActivo: "Butilescopolamina, bromuro", dosis: "20 mg.", categoria: "ampollas", presentacion: "E/6 Ampollas 1 ml.", stockMinimo: 48 },
+  { grupo: "ANTIHIPERTENSIVOS", principioActivo: "Captopril", dosis: "25 mg.", categoria: "comprimidos", presentacion: "E/60 Comp.", stockMinimo: 240 },
+  { grupo: "ANTIDOTOS", principioActivo: "Carbón Activado", dosis: "", categoria: "otros", presentacion: "E/25 Gramos", stockMinimo: 8 },
+  { grupo: "ANTIHISTAMINICOS", principioActivo: "Cetirizina", dosis: "10 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 80 },
+  { grupo: "ANTIBIOTICOS", principioActivo: "Ciprofloxacino", dosis: "0,20 %", categoria: "otros", presentacion: "Bolsa IV 100 ml.", stockMinimo: 4 },
+  { grupo: "ANTIBIOTICOS", principioActivo: "Ciprofloxacino", dosis: "500 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 80 },
+  { grupo: "ANTISEP., DESINFECT.", principioActivo: "Clorhexidina", dosis: "5 %", categoria: "otros", presentacion: "E/500 ml.", stockMinimo: 12 },
+  { grupo: "ESTOMATOLOGICOS", principioActivo: "Clorhexidina (colutorio)", dosis: "0,12 %", categoria: "otros", presentacion: "E/500 ml.", stockMinimo: 12 },
+  { grupo: "ANTISEP., DESINFECT.", principioActivo: "Clorhexidina (spray)", dosis: "1 %", categoria: "otros", presentacion: "Nebulizador 100 ml.", stockMinimo: 8 },
+  { grupo: "SISTEMA NERVIOSO", principioActivo: "Clorpromazina", dosis: "25 mg.", categoria: "vial", presentacion: "E/5 Ampollas", stockMinimo: 8 },
+  { grupo: "ANESTESICOS LOCALES", principioActivo: "Cloruro de etilo", dosis: "100 %", categoria: "otros", presentacion: "E/100 gr.", stockMinimo: 4 },
+  { grupo: "ELECTROLITOS", principioActivo: "Cloruro Potásico 2 M", dosis: "2 M", categoria: "vial", presentacion: "E/10 Ampollas", stockMinimo: 40 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Clotrimazol", dosis: "10 mg.", categoria: "crema", presentacion: "Tubos 5 gr (6)", stockMinimo: 8 },
+  { grupo: "GINECOLÓGICO", principioActivo: "Clotrimazol (Gine)", dosis: "100 mg.", categoria: "ovulos", presentacion: "E/6 Comp. Vag.", stockMinimo: 24 },
+  { grupo: "ANTIBIOTICOS", principioActivo: "Cloxacilina", dosis: "1 gr.", categoria: "vial", presentacion: "E/1 Vial", stockMinimo: 16 },
+  { grupo: "ANTIBIOTICOS", principioActivo: "Cloxacilina", dosis: "500 mg.", categoria: "capsulas", presentacion: "E/12 Cápsulas", stockMinimo: 144 },
+  { grupo: "OTROS", principioActivo: "Depuradores de agua comp.", dosis: "5 mg.", categoria: "comprimidos", presentacion: "L/6 Comp.", stockMinimo: 960 },
+  { grupo: "CORTICOIDES", principioActivo: "Dexametasona/Tiamina/Cianocobalamina", dosis: "4 mg/50mg/250mcg", categoria: "ampollas", presentacion: "E/6 Ampollas 2 ml.", stockMinimo: 48 },
+  { grupo: "ANTIHISTAMINICOS", principioActivo: "Dexclorfeniramina", dosis: "2 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 80 },
+  { grupo: "ANTITUSIVOS", principioActivo: "Dextrometorfano", dosis: "15 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 160 },
+  { grupo: "SISTEMA NERVIOSO", principioActivo: "Diazepam", dosis: "10 mg.", categoria: "ampollas", presentacion: "E/10 Ampollas", stockMinimo: 40 },
+  { grupo: "SISTEMA NERVIOSO", principioActivo: "Diazepam", dosis: "5 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 160 },
+  { grupo: "AINE.s", principioActivo: "Diclofenaco", dosis: "50 mg.", categoria: "comprimidos", presentacion: "E/40 Comp.", stockMinimo: 160 },
+  { grupo: "OFTALMOLÓGICOS", principioActivo: "Diclofenaco", dosis: "0,10 %", categoria: "oftalmologico", presentacion: "E/10 Unidosis", stockMinimo: 80 },
+  { grupo: "AINE.s", principioActivo: "Diclofenaco", dosis: "75 mg.", categoria: "ampollas", presentacion: "E/10 Ampollas", stockMinimo: 40 },
+  { grupo: "CARDIOLÓGICOS", principioActivo: "Digoxina", dosis: "0,25 mg.", categoria: "comprimidos", presentacion: "E/50 Comp.", stockMinimo: 100 },
+  { grupo: "CARDIOLÓGICOS", principioActivo: "Digoxina", dosis: "0,25 mg.", categoria: "ampollas", presentacion: "E/5 Ampollas", stockMinimo: 20 },
+  { grupo: "ANTICINETOSICO", principioActivo: "Dimenhidrinato", dosis: "100 mg.", categoria: "supositorios", presentacion: "E/4 Supositorios", stockMinimo: 16 },
+  { grupo: "ANTICINETOSICO", principioActivo: "Dimenhidrinato", dosis: "50 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 800 },
+  { grupo: "ANTIBIOTICOS", principioActivo: "Doxiciclina", dosis: "100 mg.", categoria: "capsulas", presentacion: "E/20 Cápsulas", stockMinimo: 80 },
+  { grupo: "ANTITROMBÓTICOS", principioActivo: "Enoxaparina", dosis: "40 mg.", categoria: "otros", presentacion: "E/10 Jeringas", stockMinimo: 40 },
+  { grupo: "CARDIOLÓGICOS", principioActivo: "Epinefrina", dosis: "1 mg.", categoria: "ampollas", presentacion: "JP 1 ml.", stockMinimo: 8 },
+  { grupo: "CARDIOLÓGICOS", principioActivo: "Epinefrina", dosis: "1 mg.", categoria: "ampollas", presentacion: "E/10 Ampollas", stockMinimo: 80 },
+  { grupo: "OFTALMOLÓGICOS", principioActivo: "Epitelizante Pomada Oftálmica", dosis: "", categoria: "oftalmologico", presentacion: "Tubo 3 gr.", stockMinimo: 8 },
+  { grupo: "CARDIOLÓGICOS", principioActivo: "Etilefrina", dosis: "7,5 mg.", categoria: "gotas", presentacion: "E/25 ml.", stockMinimo: 4 },
+  { grupo: "CARDIOLÓGICOS", principioActivo: "Fenitoína", dosis: "250 mg.", categoria: "vial", presentacion: "E/1 Ampolla", stockMinimo: 16 },
+  { grupo: "ANTIDOTOS", principioActivo: "Flumazenilo", dosis: "0,1 mg.", categoria: "vial", presentacion: "E/5 Ampollas", stockMinimo: 8 },
+  { grupo: "OFTALMOLÓGICOS", principioActivo: "Fluoresceína", dosis: "20 mg.", categoria: "oftalmologico", presentacion: "Colirio 10 ml.", stockMinimo: 4 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Fotoprotector crema", dosis: "", categoria: "crema", presentacion: "Tubo 50 gr.", stockMinimo: 120 },
+  { grupo: "DIURETICOS", principioActivo: "Furosemida", dosis: "20 mg.", categoria: "ampollas", presentacion: "E/5 Ampollas", stockMinimo: 40 },
+  { grupo: "DIURETICOS", principioActivo: "Furosemida", dosis: "40 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 80 },
+  { grupo: "ANTIHEMORRAGICO", principioActivo: "Gelatina Hemostática", dosis: "", categoria: "otros", presentacion: "E/10 Láminas", stockMinimo: 40 },
+  { grupo: "ANTIBIOTICOS", principioActivo: "Gentamicina", dosis: "240 mg.", categoria: "vial", presentacion: "E/1 Vial", stockMinimo: 16 },
+  { grupo: "SISTEMA NERVIOSO", principioActivo: "Haloperidol", dosis: "5 mg.", categoria: "ampollas", presentacion: "E/5 Ampollas", stockMinimo: 20 },
+  { grupo: "SISTEMA NERVIOSO", principioActivo: "Haloperidol", dosis: "2 mg.", categoria: "gotas", presentacion: "Gotas E/30 ml.", stockMinimo: 4 },
+  { grupo: "DIURETICOS", principioActivo: "Hidroclorotiazida", dosis: "50 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 80 },
+  { grupo: "CORTICOIDES", principioActivo: "Hidrocortisona", dosis: "100 mg.", categoria: "vial", presentacion: "E/1 Ampolla", stockMinimo: 8 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Hidrocortisona", dosis: "50 mg. / 1 gr.", categoria: "crema", presentacion: "Tubo 30 gr.", stockMinimo: 8 },
+  { grupo: "SUSTITUTOS PLASMA", principioActivo: "Hidroxietilamidón", dosis: "6 %", categoria: "otros", presentacion: "E/500 ml.", stockMinimo: 24 },
+  { grupo: "AINE.s", principioActivo: "Ibuprofeno", dosis: "400 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 320 },
+  { grupo: "INSULINAS", principioActivo: "Insulina Acción Rápida", dosis: "100 UI / ml.", categoria: "vial", presentacion: "E/1 Vial 10 ml.", stockMinimo: 4 },
+  { grupo: "ANTIMICÓTICOS", principioActivo: "Ketoconazol", dosis: "200 mg.", categoria: "comprimidos", presentacion: "E/10 Comp.", stockMinimo: 80 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Ketoprofeno", dosis: "18 mg./gr.", categoria: "crema", presentacion: "Tubo 30 gr.", stockMinimo: 40 },
+  { grupo: "LAXANTES", principioActivo: "Lactulosa", dosis: "3,33 gr./5 ml.", categoria: "otros", presentacion: "E/200 ml.", stockMinimo: 12 },
+  { grupo: "LAXANTES", principioActivo: "Lauril sulfato Na, acetato / Sodio Citrato", dosis: "45/450 mg.", categoria: "otros", presentacion: "E/4 Canuletas", stockMinimo: 48 },
+  { grupo: "GINECOLÓGICO", principioActivo: "Levonorgestrel", dosis: "1,5 mg.", categoria: "comprimidos", presentacion: "E/1 Comp.", stockMinimo: 4 },
+  { grupo: "ANESTESICOS LOCALES", principioActivo: "Lidocaína", dosis: "2 %", categoria: "ampollas", presentacion: "E/10 Ampollas", stockMinimo: 40 },
+  { grupo: "ANTIDIARREICOS", principioActivo: "Loperamida", dosis: "2 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 160 },
+  { grupo: "SISTEMA NERVIOSO", principioActivo: "Lorazepam", dosis: "1 mg.", categoria: "comprimidos", presentacion: "E/25 Comp.", stockMinimo: 100 },
+  { grupo: "ANTIULCEROSOS Y ANTIACIDOS", principioActivo: "Magaldrato", dosis: "400 mg.", categoria: "comprimidos", presentacion: "E/40 Comp.", stockMinimo: 640 },
+  { grupo: "ANTIHELMINICOS", principioActivo: "Mebendazol", dosis: "100 mg.", categoria: "comprimidos", presentacion: "E/6 Comp.", stockMinimo: 48 },
+  { grupo: "AINE.s", principioActivo: "Metamizol", dosis: "500 mg.", categoria: "capsulas", presentacion: "E/20 Cápsulas", stockMinimo: 240 },
+  { grupo: "AINE.s", principioActivo: "Metamizol", dosis: "2 gr.", categoria: "ampollas", presentacion: "E/10 Ampollas", stockMinimo: 160 },
+  { grupo: "OXITOCICOS", principioActivo: "Metilergometrina", dosis: "0,2 mg.", categoria: "ampollas", presentacion: "E/3 Ampollas 1 ml.", stockMinimo: 12 },
+  { grupo: "OXITOCICOS", principioActivo: "Metilergometrina", dosis: "0,25 mg.", categoria: "gotas", presentacion: "Gotas E/10 ml.", stockMinimo: 8 },
+  { grupo: "CORTICOIDES", principioActivo: "Metilprednisolona", dosis: "40 mg.", categoria: "vial", presentacion: "E/1 Ampolla", stockMinimo: 12 },
+  { grupo: "CORTICOIDES", principioActivo: "Metilprednisolona", dosis: "20 mg.", categoria: "otros", presentacion: "JP 1 ml.", stockMinimo: 8 },
+  { grupo: "ANTIEMETICOS", principioActivo: "Metoclopramida", dosis: "10 mg.", categoria: "ampollas", presentacion: "E/10 Ampollas", stockMinimo: 40 },
+  { grupo: "ANTIEMETICOS", principioActivo: "Metoclopramida", dosis: "10 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 80 },
+  { grupo: "AMEBICIDAS", principioActivo: "Metronidazol", dosis: "250 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 80 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Miconazol", dosis: "20 mg.", categoria: "crema", presentacion: "Tubo 30 gr.", stockMinimo: 8 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Mupirocina", dosis: "2,00 %", categoria: "crema", presentacion: "Tubo 15 gr.", stockMinimo: 12 },
+  { grupo: "ANTIANGINOSOS", principioActivo: "Nitroglicerina", dosis: "1 mg.", categoria: "comprimidos", presentacion: "E/20 grageas", stockMinimo: 80 },
+  { grupo: "ANTIANGINOSOS", principioActivo: "Nitroglicerina", dosis: "400 mcg.", categoria: "otros", presentacion: "Aerosol 200 dosis", stockMinimo: 4 },
+  { grupo: "ANTIANGINOSOS", principioActivo: "Nitroglicerina", dosis: "5 mg.", categoria: "otros", presentacion: "E/12 Ampollas", stockMinimo: 8 },
+  { grupo: "ANTIULCEROSOS Y ANTIACIDOS", principioActivo: "Omeprazol", dosis: "20 mg.", categoria: "capsulas", presentacion: "E/28 Cápsulas", stockMinimo: 224 },
+  { grupo: "ANTIULCEROSOS Y ANTIACIDOS", principioActivo: "Omeprazol", dosis: "40 mg.", categoria: "vial", presentacion: "E/1 Ampolla", stockMinimo: 4 },
+  { grupo: "AINE.s", principioActivo: "Paracetamol", dosis: "1 gr.", categoria: "vial", presentacion: "E/12 Viales", stockMinimo: 12 },
+  { grupo: "AINE.s", principioActivo: "Paracetamol", dosis: "500 mg.", categoria: "capsulas", presentacion: "E/20 Cápsulas", stockMinimo: 800 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Pentosano polisulfúrico, ácido", dosis: "1 mg.", categoria: "crema", presentacion: "Tubo 30 gr.", stockMinimo: 12 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Permetrina", dosis: "1,50 %", categoria: "otros", presentacion: "E/125 ml.", stockMinimo: 4 },
+  { grupo: "ANTISEP., DESINFECT.", principioActivo: "Povidona yodada", dosis: "10,00 %", categoria: "otros", presentacion: "E/20 ml.", stockMinimo: 20 },
+  { grupo: "CORTICOIDES", principioActivo: "Prednisona", dosis: "5 mg.", categoria: "comprimidos", presentacion: "E/30 Comp.", stockMinimo: 60 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Prometazina", dosis: "20 mg.", categoria: "crema", presentacion: "Tubo 30 gr.", stockMinimo: 12 },
+  { grupo: "SISTEMA NERVIOSO", principioActivo: "Propofol", dosis: "10 mg.", categoria: "ampollas", presentacion: "E/5 Ampollas", stockMinimo: 8 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Protector labial", dosis: "", categoria: "otros", presentacion: "Barra de 4 gr.", stockMinimo: 60 },
+  { grupo: "ANTIULCEROSOS Y ANTIACIDOS", principioActivo: "Ranitidina", dosis: "50 mg.", categoria: "ampollas", presentacion: "E/10 Ampollas", stockMinimo: 40 },
+  { grupo: "BRONCODILATADORES", principioActivo: "Salbutamol", dosis: "100 mcg.", categoria: "otros", presentacion: "Aerosol", stockMinimo: 24 },
+  { grupo: "BRONCODILATADORES", principioActivo: "Salbutamol", dosis: "500 mcg.", categoria: "ampollas", presentacion: "E/6 Ampollas 1 ml.", stockMinimo: 8 },
+  { grupo: "SUEROS", principioActivo: "Suero Bicarbonato sódico", dosis: "1,40 %", categoria: "otros", presentacion: "E/250 ml.", stockMinimo: 24 },
+  { grupo: "SUEROS", principioActivo: "Suero fisiológico DEF", dosis: "0,90 %", categoria: "otros", presentacion: "E/500 ml.", stockMinimo: 4 },
+  { grupo: "SUEROS", principioActivo: "Suero fisiológico DEF", dosis: "0,90 %", categoria: "otros", presentacion: "E/100 ml.", stockMinimo: 8 },
+  { grupo: "SUEROS", principioActivo: "Suero glucosado DEF", dosis: "5,00 %", categoria: "otros", presentacion: "E/500 ml.", stockMinimo: 20 },
+  { grupo: "SUEROS", principioActivo: "Suero glucosalino DEF", dosis: "", categoria: "otros", presentacion: "E/500 ml.", stockMinimo: 20 },
+  { grupo: "SUEROS", principioActivo: "Suero Ringer Lactato DEF", dosis: "", categoria: "otros", presentacion: "E/500 ml.", stockMinimo: 20 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Sulfadiazina Argéntica", dosis: "10 mg.", categoria: "crema", presentacion: "Tubo 30 gr.", stockMinimo: 16 },
+  { grupo: "ANESTESICOS LOCALES", principioActivo: "Tetracaína (Lub. Urológico)", dosis: "7,5 mg.", categoria: "crema", presentacion: "Tubo 25 gr.", stockMinimo: 4 },
+  { grupo: "OTOLÓGICOS", principioActivo: "Tetracaína / Clavo", dosis: "100 mg.", categoria: "gotas", presentacion: "Gotas 7,5 ml.", stockMinimo: 8 },
+  { grupo: "OFTALMOLÓGICOS", principioActivo: "Tetracaína / Oxibuprocaina", dosis: "1 mg./4 mg.", categoria: "oftalmologico", presentacion: "Colirio 10 mililitros", stockMinimo: 4 },
+  { grupo: "ANSIOLÍTICOS Y RELAJANTES", principioActivo: "Tetrazepam", dosis: "50 mg.", categoria: "comprimidos", presentacion: "E/30 Comp.", stockMinimo: 120 },
+  { grupo: "OFTALMOLÓGICOS", principioActivo: "Tobramicina", dosis: "0,30 %", categoria: "oftalmologico", presentacion: "Colirio 5 mililitros", stockMinimo: 8 },
+  { grupo: "OFTALMOLÓGICOS", principioActivo: "Tobramicina", dosis: "0,30 %", categoria: "crema", presentacion: "Tubo 3,5 gr.", stockMinimo: 8 },
+  { grupo: "SULFAMIDAS", principioActivo: "Trimetoxazol", dosis: "80/400 mg.", categoria: "comprimidos", presentacion: "E/20 Comp.", stockMinimo: 240 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Vaselina estéril DEF", dosis: "100 %", categoria: "crema", presentacion: "Tubo 30 gr.", stockMinimo: 16 },
+  { grupo: "DERMATOLÓGICOS", principioActivo: "Vitamina A+D", dosis: "", categoria: "crema", presentacion: "Tubo 30 gr.", stockMinimo: 16 }
+];
+
+
+// Medicamentos de NO CARGO (control de pedidos por separado)
+const DOTACION_NO_CARGO = [
+  { nombreComercial: "Acetilcisteína, FLUMIL 100 MG/ML SOLUCION INYECTABLE", presentacion: "Caja 5 Ampollas", stockMinimo: 0 },
+  { nombreComercial: "Ácido Acetilsalicílico 100 mg, ADIRO® 100", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Ácido Tranexámico AMCHAFIBRIN 500mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Aftajventud® colutorio", presentacion: "Frasco 30 ml", stockMinimo: 0 },
+  { nombreComercial: "Albendazol 400 mg, ESKAZOLE®", presentacion: "Caja 6 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Aleudrina 0,2 mg / ml ISOPROTERENOL® (FRIO)", presentacion: "Caja 60 ampollas", stockMinimo: 0 },
+  { nombreComercial: "Alopurinol 100 mg", presentacion: "Caja 25 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Alopurinol 300 mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Alprazolam 0,5 mg, TRANKIMAZIN®", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Ampicilina 1g, GOBEMICINA", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Atenolol 50 mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Atorvastatina 10 mg", presentacion: "Caja 28 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Betahistina, SERC® 16 mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Betametasona inyectable, celestone", presentacion: "3 Viales", stockMinimo: 0 },
+  { nombreComercial: "Bisoprolol cor sandoz EFG 5 mg", presentacion: "Caja 60 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Blastoestimulina Pom.", presentacion: "Tubo 30 g", stockMinimo: 0 },
+  { nombreComercial: "Blastoestimulina óvulos vaginales", presentacion: "Caja 10 óvulos", stockMinimo: 0 },
+  { nombreComercial: "Bromazepam 1,5 mg, LEXATIN®", presentacion: "Caja 30 Caps.", stockMinimo: 0 },
+  { nombreComercial: "Bromuro de ipatropio 250 mcg / 2ml ATROVENT", presentacion: "Caja Monodosis", stockMinimo: 0 },
+  { nombreComercial: "Budesonida ALDO-UNION® 0,25 mcg / ml suspensión para inhalación por nebulizador", presentacion: "Caja 20 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Budesonida ALDO UNION 0.5 mcg/ml suspensión para inhalación por nebulizador", presentacion: "Caja 20 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Carvedilol 25 mg, COROPRES®", presentacion: "Caja 28 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Cefazolina 1 g NORMON® INTRAVENOSA", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Ceftriaxona 1000 mg NORMON® INTRAVENOSA", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Cefuroxima 500 mg", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Ciclobenzaprina 10 mg Yurelax®", presentacion: "Caja 30 cap.", stockMinimo: 0 },
+  { nombreComercial: "Cinarizina, STUGERON® cápsulas", presentacion: "Caja 30 cap.", stockMinimo: 0 },
+  { nombreComercial: "Ciprofloxacino 1 mg gotas óticas, QUALIGEN", presentacion: "Caja 20 Env.", stockMinimo: 0 },
+  { nombreComercial: "Ciprofloxacino 3 mg / ml colirio OFTACILOX®", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Claritromicina 500 mg", presentacion: "Caja 21 comp.", stockMinimo: 0 },
+  { nombreComercial: "Clindamicina 300 mg / 2 ml", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Clopidogrel 75 mg, PLAVIX®", presentacion: "Caja 28 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Cloracepato dipotasico 20 mg, TRANXILIUM®", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Clorhexidina jabonosa 40mg/ml 400 ml HIBISCRUB", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Clorhexidina solución acuosa 2% 250 ml", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Clorhexidina solución alcohólica 2% 250 ml", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Cloruro de calcio 100mg/mL, BRAUN", presentacion: "Ampollas", stockMinimo: 0 },
+  { nombreComercial: "Clotrimazol Polvo 10 mg / g CANESTEN® polvo cutáneo", presentacion: "1 frasco", stockMinimo: 0 },
+  { nombreComercial: "Colchicina SEID® 1 mg", presentacion: "Caja 40 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Combiprasal® 0,5 mg / 2,5 mg", presentacion: "Caja 20 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Crema fotoprotectora FPS 50", presentacion: "Tubo", stockMinimo: 0 },
+  { nombreComercial: "Desloratadina 5 mg Bucodispersables, AERIUS®", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Dexametasona, Fortecortin® 4 mg", presentacion: "Caja 30comp", stockMinimo: 0 },
+  { nombreComercial: "Dexametasona, Fortecortin® 4 mg / ml", presentacion: "Caja 3 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Dexclorfeniramina, POLARAMINE® 5 mg / ml", presentacion: "Caja 5 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Dexketoprofeno, ENANTYUM® 25 mg", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Dexketoprofeno, ENANTYUM® 50 mg / 2 ml", presentacion: "Caja 6 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Doxilamina DORMIDINA 25 mg", presentacion: "Caja", stockMinimo: 0 },
+  { nombreComercial: "Ebastina + Pseudoefedrina Hidrocloruro 10 mg / 120 mg RINO-EBASTEL®", presentacion: "Caja 7 Caps.", stockMinimo: 0 },
+  { nombreComercial: "Ebastina 20 mg, EBASTEL FORTE®", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Enalapril 20 mg", presentacion: "Caja 28 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Enema Casen", presentacion: "Frasco", stockMinimo: 0 },
+  { nombreComercial: "Enoxaparina 100 mg, CLEXANE 10000 UI", presentacion: "10 jeringas precargadas", stockMinimo: 0 },
+  { nombreComercial: "Enoxaparina 60 mg, CLEXANE 6000 UI", presentacion: "10 jeringas precargadas", stockMinimo: 0 },
+  { nombreComercial: "Enoxaparina 80 mg, CLEXANE 8000 UI", presentacion: "10 jeringas precargadas", stockMinimo: 0 },
+  { nombreComercial: "Epistaxol® sol. cutánea", presentacion: "Frasco 10 ml", stockMinimo: 0 },
+  { nombreComercial: "Eritromicina 500 mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Fondaparinux sodico, ARIXTRA 2,5 MG/0,5 ML SOLUCION INYECTABLE", presentacion: "10 Jeringas precargadas", stockMinimo: 0 },
+  { nombreComercial: "Fosfomicina 3g", presentacion: "Caja 2 sobres", stockMinimo: 0 },
+  { nombreComercial: "Gelatina tanato, TANAGEL 250 mg", presentacion: "20 sobres", stockMinimo: 0 },
+  { nombreComercial: "Gentadexa COLIRCUSI®", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Getamicina Oftalmica", presentacion: "Tubo 3 gr.", stockMinimo: 0 },
+  { nombreComercial: "Glucagen kit, glucagon (NEVERA)", presentacion: "Jeringa precarg.", stockMinimo: 0 },
+  { nombreComercial: "Hemicraneal®", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Heparina sódica 25.000 UI (5000 UI / ml)", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Heparina sódica 5.000 UI (1000 UI / ml)", presentacion: "Vial", stockMinimo: 0 },
+  { nombreComercial: "Ibuprofeno Arginina ESPIDIFEN 600 mg Sobres granulados", presentacion: "Caja Sobres.", stockMinimo: 0 },
+  { nombreComercial: "Iruxol Mono", presentacion: "Tubo 30 g", stockMinimo: 0 },
+  { nombreComercial: "Iruxol Neo", presentacion: "Tubo 30 g", stockMinimo: 0 },
+  { nombreComercial: "Konakion 10mg/ml sol. iny", presentacion: "Caja", stockMinimo: 0 },
+  { nombreComercial: "Lagrimas artificiales, VISCOFRESH unidosis", presentacion: "Caja 30 env.", stockMinimo: 0 },
+  { nombreComercial: "LEVETIRACETAM NORMON 100 MG/ML SOLUCION ORAL EFG", presentacion: "Frasco", stockMinimo: 0 },
+  { nombreComercial: "Levofloxacino 500 mg", presentacion: "Caja 14 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Levomepromazina 25 mg SINOGAN®", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Lidocaina 50 mg/ml sol. Inyectable", presentacion: "Ampollas", stockMinimo: 0 },
+  { nombreComercial: "Linimento analgésico RADIOSALIL", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Lormetazepam, NOCTAMID® 2 mg", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Manitol 2%, 250 ml", presentacion: "Frasco", stockMinimo: 0 },
+  { nombreComercial: "Metilprednisolona SOLU-MODERIN 125 MG", presentacion: "Caja 3 viales", stockMinimo: 0 },
+  { nombreComercial: "Metilprednisolona URBASON 250 mg", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Metocarbamol, paracetamol, ROBAXISAL®", presentacion: "Caja 50 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Miconazol, DAKTARIN® gel oral", presentacion: "Tubo 40 g", stockMinimo: 0 },
+  { nombreComercial: "Naloxona 0,4 mg / ml", presentacion: "Caja 10 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Naproxeno 500 mg", presentacion: "Caja 40 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Neo-Huber gotas óticas", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Neostigmina 0,5 mg / ml", presentacion: "Caja 10 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Nistatina 100000 UI/ml MYCOSTATIN®", presentacion: "Frasco 60 ml", stockMinimo: 0 },
+  { nombreComercial: "Nitrofural 2mg/g, FURACIN", presentacion: "Pomada 100 g", stockMinimo: 0 },
+  { nombreComercial: "Nitroglicerina, NITRODERM TTS 10 mg/24h", presentacion: "30 parches", stockMinimo: 0 },
+  { nombreComercial: "Nobecutan aerosol 250 ml", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Ondansetrón 4 mg", presentacion: "Caja 15 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Oralsone® adultos", presentacion: "Caja 12 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Piridoxina 300 MG, BENADON®", presentacion: "Caja 6 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Plantaben polvos 3,5g", presentacion: "Caja 30 sobres", stockMinimo: 0 },
+  { nombreComercial: "Pregabalina 75 mg LYRICA®", presentacion: "Caja 56 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Propanolol 10 mg, SUMIAL®", presentacion: "Caja 50 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Recugel Gel Oftalmico (Hidratacion Ocular)", presentacion: "Tubo 10 Gr.", stockMinimo: 0 },
+  { nombreComercial: "Rhodogil 750.000 UI/125 mg comprimidos", presentacion: "Caja 30 uds", stockMinimo: 0 },
+  { nombreComercial: "RIMSTAR® comprimidos", presentacion: "Caja", stockMinimo: 0 },
+  { nombreComercial: "Salbutamol Sol. Inhalación SALBUAIR® 2,5 mg", presentacion: "Caja 60 Unidosis", stockMinimo: 0 },
+  { nombreComercial: "Sarcop crema", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Simeticona, AERORED 40 mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Solución alcohólica Sterillium 1 L con dosificador", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Suero fisiológico 0,9% 1 L tipo Versylene", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Suero fisiológico 0,9% 20 ml Unidosis", presentacion: "Caja", stockMinimo: 0 },
+  { nombreComercial: "Suero glucosado 10%, 500 ml", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Suero glucosado 5%, 250 ml", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Suero glucosado 5%, 100 ml", presentacion: "Frasco", stockMinimo: 0 },
+  { nombreComercial: "Sueroral CASEN®", presentacion: "Caja 5 sobres", stockMinimo: 0 },
+  { nombreComercial: "Sulpirida, DOGMATIL 50 mg", presentacion: "Caja 30 Caps.", stockMinimo: 0 },
+  { nombreComercial: "Sulpirida, DOGMATIL 50 mg / ml", presentacion: "Caja 12 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Talquistina polvo", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Taponoto Neo gotas", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Terracortril® pomada tópica", presentacion: "Unidad", stockMinimo: 0 },
+  { nombreComercial: "Tiamina 100 mg, BENERVA®", presentacion: "Caja 6 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Ticagrelor 90 mg BRILIQUE", presentacion: "Caja 56 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Trigon depot 40 mg inyectable", presentacion: "Caja 3 amp", stockMinimo: 0 },
+  { nombreComercial: "Utabon Adultos", presentacion: "Frasco", stockMinimo: 0 },
+  { nombreComercial: "Vancomicina 500 mg", presentacion: "vial", stockMinimo: 0 },
+  { nombreComercial: "Varidasa ®", presentacion: "Caja 20 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Ventolin 5 mg/ml sol. Para inhalación", presentacion: "Frasco 10 ml", stockMinimo: 0 },
+  { nombreComercial: "Verapamilo, MANIDON®, 2,5 mg / ml", presentacion: "Caja 5 Amp.", stockMinimo: 0 },
+  { nombreComercial: "Vispring 0,5 mg/ml", presentacion: "10 monodosis", stockMinimo: 0 },
+  { nombreComercial: "Zolpidem 10 mg", presentacion: "Caja 30 Comp.", stockMinimo: 0 },
+  { nombreComercial: "Aposito Povidona Iodada, Betatul Apositos", presentacion: "Caja 10 sobres", stockMinimo: 0 },
+  { nombreComercial: "cloperastina jarabe 3,54mg/ml", presentacion: "Frasco", stockMinimo: 0 },
+  { nombreComercial: "azelastina hidrocloruro ALUON colirio 0,5mg/ml", presentacion: "unidad", stockMinimo: 0 },
+  { nombreComercial: "complejo vitaminico", presentacion: "unidad", stockMinimo: 0 },
+  { nombreComercial: "metilprednisolona ADVENTA pomada 1mg/ml", presentacion: "pomada", stockMinimo: 0 },
+];
+
+async function seedDotacionIfEmpty() {
+  const meds = await getMedicamentos();
+  if (meds.length > 0) return { seeded: false, count: 0 };
+
+  let count = 0;
+  for (const d of DOTACION_MINIMA) {
+    const nombre = d.principioActivo + (d.dosis ? " " + d.dosis : "");
+    await addMedicamento({
+      barcode: null,
+      nombreComercial: nombre, // provisional hasta poner marca
+      principioActivo: d.principioActivo,
+      dosis: d.dosis || "",
+      presentacion: d.presentacion || "",
+      grupoTerapeutico: d.grupo || "",
+      categoria: d.categoria || "otros",
+      stockMinimo: d.stockMinimo || 0,
+      ubicacion: "",
+      notas: "Dotación mínima (cargo)",
+      foto: null,
+      esDotacion: true,
+      tipoStock: "cargo",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    count++;
+  }
+  return { seeded: true, count };
+}
+
+async function importarDotacionFaltante() {
+  const meds = await getMedicamentos();
+  const key = (m) => ((m.principioActivo || "") + "|" + (m.dosis || "") + "|" + (m.presentacion || "")).toLowerCase();
+  const existing = new Set(meds.map(key));
+  let added = 0;
+  for (const d of DOTACION_MINIMA) {
+    const k = (d.principioActivo + "|" + (d.dosis || "") + "|" + (d.presentacion || "")).toLowerCase();
+    if (existing.has(k)) continue;
+    const nombre = d.principioActivo + (d.dosis ? " " + d.dosis : "");
+    await addMedicamento({
+      barcode: null,
+      nombreComercial: nombre,
+      principioActivo: d.principioActivo,
+      dosis: d.dosis || "",
+      presentacion: d.presentacion || "",
+      grupoTerapeutico: d.grupo || "",
+      categoria: d.categoria || "otros",
+      stockMinimo: d.stockMinimo || 0,
+      ubicacion: "",
+      notas: "Dotación mínima (cargo)",
+      foto: null,
+      esDotacion: true,
+      tipoStock: "cargo",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    existing.add(k);
+    added++;
+  }
+  return added;
+}
+
+
+// Medicamentos de USO HOSPITALARIO
+const DOTACION_HOSPITALARIO = [
+  { nombreComercial: "ACTOCORTINA 373 mg POLVO PARA SOLUCIÓN INYECTABLE, 10 viales", presentacion: "Viales", stockMinimo: 20, categoria: "vial" },
+  { nombreComercial: "ACTOCORTINA 75 MG POLVO Y DISOLVENTE PARA SOLUCIÓN INYECTABLE, 10 viales", presentacion: "Viales", stockMinimo: 20, categoria: "vial" },
+  { nombreComercial: "ADENOCOR 6 mg/2 ml SOLUCIÓN INYECTABLE, 6 viales de 2 ml", presentacion: "Viales", stockMinimo: 24, categoria: "vial" },
+  { nombreComercial: "ADRENALINA B. BRAUN 1 mg/ml SOLUCIÓN INYECTABLE, 10 ampollas de 1 ml", presentacion: "Ampollas", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "ANEXATE 0,5 mg/5 ml SOLUCIÓN INYECTABLE, 5 ampollas de 5 ml", presentacion: "Ampollas", stockMinimo: 5, categoria: "ampollas" },
+  { nombreComercial: "ANEXATE 1 mg/10 ml SOLUCIÓN INYECTABLE, 5 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 5, categoria: "ampollas" },
+  { nombreComercial: "APOCARD 10 mg/ml SOLUCIÓN INYECTABLE, 5 ampollas de 15 ml", presentacion: "Ampollas", stockMinimo: 10, categoria: "ampollas" },
+  { nombreComercial: "BICARBONATO SÓDICO 1/6 M MEIN SOLUCIÓN PARA PERFUSIÓN, 12 frascos de 250 m", presentacion: "Frasco", stockMinimo: 0, categoria: "otros" },
+  { nombreComercial: "BICARBONATO SÓDICO 1M GRIFOLS SOLUCIÓN INYECTABLE, 100 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "CISATRACURIO NORMON 2 mg/ml SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 5 viales de 5 ml", presentacion: "Viales", stockMinimo: 10, categoria: "vial" },
+  { nombreComercial: "CLORURO DE POTASIO BRAUN 1 mEq/ml CONCENTRADO PARA SOLUCIÓN PARA PERFUSIÓN, 20 x 10 ml (MP Connect)", presentacion: "Ampollas", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "CLORURO DE POTASIO BRAUN 2 mEq/ml CONCENTRADO PARA SOLUCIÓN PARA PERFUSIÓN, 20 x 20 ml (MP Connect)", presentacion: "Ampollas", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "DIPRIVAN 10 mg/ml EMULSIÓN INYECTABLE Y PARA PERFUSIÓN, 5 ampollas de 20 ml", presentacion: "Ampollas", stockMinimo: 10, categoria: "ampollas" },
+  { nombreComercial: "DOPAMINA GRIFOLS 200 mg SOLUCIÓN INYECTABLE, 6 ampollas de 5 ml", presentacion: "Ampollas", stockMinimo: 18, categoria: "ampollas" },
+  { nombreComercial: "ELGADIL 5 mg/ml SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN, 50 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 25, categoria: "ampollas" },
+  { nombreComercial: "ETOMIDATO-LIPURO 2 mg/ml EMULSIÓN INYECTABLE, 10 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "FENITOINA RUBIO 50 MG/ML SOLUCIÓN INYECTABLE, 1 ampolla de 2 ml", presentacion: "Ampollas", stockMinimo: 10, categoria: "ampollas" },
+  { nombreComercial: "FENTANEST 0,05 mg/ml SOLUCIÓN INYECTABLE, 5 ampollas de 3 ml", presentacion: "Ampollas", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "GELASPAN 40 MG/ML SOLUCIÓN PARA PERFUSIÓN, 10 frascos de 500 ml", presentacion: "Frasco", stockMinimo: 10, categoria: "otros" },
+  { nombreComercial: "GLUCOCEMIN 33% SOLUCIÓN INYECTABLE 20 ampollas de 10 ml (MP Classic)", presentacion: "Ampollas", stockMinimo: 30, categoria: "ampollas" },
+  { nombreComercial: "HIDROCLORURO DE EFEDRINA KABI 30 mg/ml SOLUCIÓN INYECTABLE, 10 ampollas de 1 ml", presentacion: "Ampollas", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "KETOLAR 50 mg/ml SOLUCIÓN INYECTABLE, 1 vial de 10 ml", presentacion: "Viales", stockMinimo: 5, categoria: "vial" },
+  { nombreComercial: "MEPIVACAINA B. BRAUN 10 MG/ML SOLUCIÓN INYECTABLE, 100 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 25, categoria: "ampollas" },
+  { nombreComercial: "MEPIVACAINA B. BRAUN 20 MG/ML SOLUCIÓN INYECTABLE, 100 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 25, categoria: "ampollas" },
+  { nombreComercial: "MIDAZOLAM B. BRAUN 5 mg/ml SOLUCIÓN PARA INYECCIÓN/PERFUSIÓN EFG, 20 ampollas de 10 ml (LDPE Miniplasco Connect)", presentacion: "Ampollas", stockMinimo: 40, categoria: "ampollas" },
+  { nombreComercial: "MIDAZOLAM NORMON 1 MG/ML SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 10 ampollas de 5 ml", presentacion: "Ampollas", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "NITROPRUSSIAT FIDES 50 MG POLVO Y DISOLVENTE PARA SOLUCIÓN INYECTABLE, 1 vial + 1 ampolla de disolvente", presentacion: "Viales", stockMinimo: 5, categoria: "vial" },
+  { nombreComercial: "NORADRENALINA NORMON 0,5 MG/ML CONCENTRADO PARA SOLUCIÓN PARA PERFUSIÓN EFG, 100 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 40, categoria: "ampollas" },
+  { nombreComercial: "OMEPRAZOL NORMON 40 mg POLVO PARA SOLUCIÓN PARA PERFUSIÓN EFG, 50 viales", presentacion: "Viales", stockMinimo: 50, categoria: "vial" },
+  { nombreComercial: "PARACETAMOL B. BRAUN 10 mg/ml SOLUCIÓN PARA PERFUSIÓN EFG, 10 frascos de 100 ml", presentacion: "Frasco", stockMinimo: 0, categoria: "otros" },
+  { nombreComercial: "PROPOFOL LIPURO 10 mg/ml EMULSIÓN INYECTABLE Y PARA PERFUSIÓN, 10 viales de 100 ml", presentacion: "Viales", stockMinimo: 20, categoria: "vial" },
+  { nombreComercial: "PROPOFOL LIPOVEN FRESENIUS 20 mg/ml EMULSIÓN INYECTABLE Y PARA PERFUSIÓN, 10 viales de 100 ml", presentacion: "Viales", stockMinimo: 20, categoria: "vial" },
+  { nombreComercial: "ROCURONIO B. BRAUN 10 mg/ml SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 20 ampollas de 5 ml", presentacion: "Ampollas", stockMinimo: 40, categoria: "ampollas" },
+  { nombreComercial: "SOLINTRINA FUERTE 5 mg/ml solución inyectable, 12 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 12, categoria: "ampollas" },
+  { nombreComercial: "SULFATO DE MAGNESIO ALTAN 150 MG/ML SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 10 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 10, categoria: "ampollas" },
+  { nombreComercial: "SUPLECAL MINIPLASCO SOLUCIÓN INYECTABLE, 20 ampollas de 10 ml (miniplasco classic)", presentacion: "Ampollas", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "SUXAMETONIO ETHYPHARM 50 MG/ML SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 10 ampollas de 2 ml", presentacion: "Ampollas", stockMinimo: 30, categoria: "ampollas" },
+  { nombreComercial: "TENORMIN 0,5 mg/ml SOLUCIÓN INYECTABLE, 5 ampollas de 10 ml", presentacion: "Ampollas", stockMinimo: 5, categoria: "ampollas" },
+  { nombreComercial: "TORADOL 30 mg/1 ml SOLUCIÓN INYECTABLE, 6 ampollas de 1 ml", presentacion: "Ampollas", stockMinimo: 24, categoria: "ampollas" },
+  { nombreComercial: "TRANGOREX 150 mg / 3 ml SOLUCIÓN INYECTABLE, 6 ampollas de 3 ml", presentacion: "Ampollas", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "ACTILYSE POLVO Y DISOLVENTE PARA SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN, 1 vial 20 mg + vial de disolvente", presentacion: "Vial", stockMinimo: 5, categoria: "vial" },
+  { nombreComercial: "ACTILYSE POLVO Y DISOLVENTE PARA SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN, 1 vial 50 mg + vial de disolvente", presentacion: "Vial", stockMinimo: 5, categoria: "vial" },
+  { nombreComercial: "ALBIOMIN 20% (200 g/L) SOLUCIÓN PARA PERFUSIÓN, 1 frasco de 50 ml", presentacion: "Frasco", stockMinimo: 0, categoria: "otros" },
+  { nombreComercial: "AMOXICILINA/ÁCIDO CLAVULÁNICO NORMON 1.000 mg/200 mg POLVO PARA SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 100 viales", presentacion: "Vial", stockMinimo: 20, categoria: "vial" },
+  { nombreComercial: "AMOXICILINA/ÁCIDO CLAVULÁNICO NORMON 500 mg/50 mg POLVO PARA SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 1 vial", presentacion: "Vial", stockMinimo: 20, categoria: "vial" },
+  { nombreComercial: "BIOCORYL 100 MG/ML SOLUCIÓN INYECTABLE, 1 vial de 10 ml", presentacion: "Vial", stockMinimo: 4, categoria: "vial" },
+  { nombreComercial: "BRIDION 100 MG/ML SOLUCIÓN INYECTABLE 10 viales de 2 ml", presentacion: "Vial", stockMinimo: 10, categoria: "vial" },
+  { nombreComercial: "BUPIVACAINA B. BRAUN 5 mg/ml SOLUCIÓN INYECTABLE, 100 ampollas de 10 ml", presentacion: "Ampolla", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "BUPIVACAINA HIPERBARICA B. BRAUN 5 mg / ml SOLUCIÓN INYECTABLE EN MINI-PLASCO, 100 ampollas de 4 ml", presentacion: "Ampolla", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "BUPIVACAINA PHYSIAN 2,5 MG/ML SOLUCIÓN INYECTABLE 50 ampollas de 10 ml", presentacion: "Ampolla", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "CISATRACURIO NORMON 2 mg/ml SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 5 viales de 10 ml", presentacion: "Vial", stockMinimo: 10, categoria: "vial" },
+  { nombreComercial: "CLARITROMICINA ALTAN 500 mg LIOFILIZADO PARA SOLUCIÓN PARA PERFUSIÓN EFG, 1 vial", presentacion: "Vial", stockMinimo: 20, categoria: "vial" },
+  { nombreComercial: "CLEVIPREX 0,5 MG/ML EMULSIÓN INYECTABLE, 10 viales de 50 ml", presentacion: "Vial", stockMinimo: 10, categoria: "vial" },
+  { nombreComercial: "CLORURO DE SODIO B. BRAUN 20% CONCENTRADO PARA SOLUCIÓN PARA PERFUSIÓN, 20 ampollas de 10 ml (Connect)", presentacion: "Ampolla", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "DANTROLENO IV 20MG (DANTRIUM)", presentacion: "Vial", stockMinimo: 24, categoria: "vial" },
+  { nombreComercial: "DEPAKINE 100 mg/ml POLVO Y DISOLVENTE PARA SOLUCIÓN INYECTABLE, 1 vial + 1 ampolla de disolvente", presentacion: "Vial", stockMinimo: 5, categoria: "vial" },
+  { nombreComercial: "DEXDOR 100 MICROGRAMOS/ML CONCENTRADO PARA SOLUCIÓN PARA PERFUSIÓN (25X2 ML), 25 ampollas de 2 ml", presentacion: "Ampolla", stockMinimo: 25, categoria: "ampollas" },
+  { nombreComercial: "DOBUTAMINA HIKMA 12,5 MG/ML CONCENTRADO PARA SOLUCIÓN PARA PERFUSIÓN EFG, 10 viales de 20 ml", presentacion: "Vial", stockMinimo: 30, categoria: "vial" },
+  { nombreComercial: "DROPERIDOL HIKMA 2,5 MG/ML SOLUCIÓN INYECTABLE EFG, 10 viales de 1 m", presentacion: "Vial", stockMinimo: 10, categoria: "vial" },
+  { nombreComercial: "Eritromicina, PANTOMICINA 1G POLVO PARA SOLUCIÓN PARA PERFUSIÓN", presentacion: "Vial", stockMinimo: 10, categoria: "vial" },
+  { nombreComercial: "ESOMEPRAZOL NORMON 40 MG POLVO PARA SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 50 viales", presentacion: "Vial", stockMinimo: 20, categoria: "vial" },
+  { nombreComercial: "FIBRYGA 1 G POLVO Y DISOLVENTE PARA SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN, 1 vial (polvo) + 1 vial de disolvente + 1 Dispositivo de transferencia + 1 Filtro", presentacion: "Vial", stockMinimo: 8, categoria: "vial" },
+  { nombreComercial: "Furosemida, SEGURIL 250 mg/25 ml SOLUCIÓN INYECTABLE", presentacion: "Ampolla", stockMinimo: 18, categoria: "ampollas" },
+  { nombreComercial: "GELASPAN 40 MG/ML SOLUCIÓN PARA PERFUSIÓN, 10 frascos de 500 ml", presentacion: "Frasco", stockMinimo: 0, categoria: "otros" },
+  { nombreComercial: "GLUCOCEMIN 50% CONCENTRADO PARA SOLUCIÓN PARA PERFUSIÓN 20 ampollas de 20 ml (MP Connect)", presentacion: "Ampolla", stockMinimo: 30, categoria: "ampollas" },
+  { nombreComercial: "HIDONAC ANTIDOTO 200 MG/ML CONCENTRADO PARA SOLUCIÓN PARA PERFUSIÓN, 1 vial de 25 ml", presentacion: "Vial", stockMinimo: 5, categoria: "vial" },
+  { nombreComercial: "HIDROCLORURO DE FENILEFRINA ALTAN 10 mg/ml SOLUCIÓN INYECTABLE, 10 ampollas de 1 ml", presentacion: "Ampolla", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "HYDRAPRES 20 mg POLVO PARA SOLUCIÓN INYECTABLE, 5 ampollas", presentacion: "Ampolla", stockMinimo: 10, categoria: "ampollas" },
+  { nombreComercial: "IMIPENEM/CILASTATINA KABI 500 mg/500 mg POLVO PARA SOLUCIÓN PARA PERFUSIÓN EFG, 10 viales", presentacion: "Vial", stockMinimo: 20, categoria: "vial" },
+  { nombreComercial: "INVANZ 1 G POLVO PARA CONCENTRADO PARA SOLUCIÓN PARA PERFUSIÓN, 1 vial", presentacion: "Vial", stockMinimo: 10, categoria: "vial" },
+  { nombreComercial: "LEVOBUPIVACAINA ALTAN 5 MG/ML SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG 10 ampollas de 10 ml", presentacion: "Ampolla", stockMinimo: 20, categoria: "ampollas" },
+  { nombreComercial: "LEVOBUPIVACAINA NORMON 2,5 MG/ML SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 10 ampollas de 10 ml", presentacion: "Ampolla", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "LEVOBUPIVACAINA NORMON 7,5 MG/ML SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN EFG, 10 ampollas de 10 ml", presentacion: "Ampolla", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "LEVOFLOXACINO NORMON 5 mg/ml SOLUCIÓN PARA PERFUSIÓN EFG, 20 bolsas de 100 ml", presentacion: "Bolsa", stockMinimo: 20, categoria: "otros" },
+  { nombreComercial: "LINEZOLID ACCORD-PHARMA 2 mg/ml SOLUCIÓN PARA PERFUSIÓN EFG, 10 bolsas de 300 ml", presentacion: "Bolsa", stockMinimo: 10, categoria: "otros" },
+  { nombreComercial: "LINEZOLID NORMON 600 MG COMPRIMIDOS RECUBIERTOS CON PELÍCULA EFG", presentacion: "Comp.", stockMinimo: 10, categoria: "comprimidos" },
+  { nombreComercial: "MEROPENEM KABI 1000 mg POLVO PARA SOLUCIÓN INYECTABLE O PARA PERFUSIÓN EFG, 10 frascos de 50 ml", presentacion: "Frasco", stockMinimo: 20, categoria: "otros" },
+  { nombreComercial: "METRONIDAZOL B.BRAUN 5 MG/ML SOLUCIÓN PARA PERFUSIÓN, 20 frascos de 100 ml", presentacion: "Frasco", stockMinimo: 0, categoria: "otros" },
+  { nombreComercial: "OCTAPLEX, 500 UI POLVO Y DISOLVENTE PARA SOLUCIÓN INYECTABLE, 1 vial + 1 vial de disolvente", presentacion: "Vial", stockMinimo: 5, categoria: "vial" },
+  { nombreComercial: "ONDANSETRON NORMON 4mg/2 ml SOLUCIÓN INYECTABLE EFG, 50 ampollas de 2 ml", presentacion: "Ampolla", stockMinimo: 50, categoria: "ampollas" },
+  { nombreComercial: "PIPERACILINA/TAZOBACTAM SANDOZ 4 G/0,5 G POLVO PARA SOLUCIÓN PARA PERFUSIÓN", presentacion: "Vial", stockMinimo: 30, categoria: "vial" },
+  { nombreComercial: "PROTAMINA SULFATO LEO PHARMA 1.400 UI ANTI-HEPARINA (10MG)/ML SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN, 5 ampollas de 5 ml", presentacion: "Ampolla", stockMinimo: 5, categoria: "ampollas" },
+  { nombreComercial: "SEVORANE 100% LIQUIDO PARA INHALACION DEL VAPOR, 1 frasco de 250 ml", presentacion: "Frasco", stockMinimo: 6, categoria: "otros" },
+  { nombreComercial: "SULMETIN SIMPLE 150mg/ml SOLUCIÓN INYECTABLE PARA PERFUSIÓN, 5 ampollas de 10 ml", presentacion: "Ampolla", stockMinimo: 10, categoria: "ampollas" },
+  { nombreComercial: "SYNTOCINON 10UI/ML SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN, 10 ampollas de 1 ml", presentacion: "Ampolla", stockMinimo: 10, categoria: "ampollas" },
+  { nombreComercial: "TIOBARBITAL B. BRAUN 0,5 G POLVO PARA SOLUCIÓN INYECTABLE 50 viales", presentacion: "Vial", stockMinimo: 5, categoria: "vial" },
+  { nombreComercial: "TRANADTE 5 mg/ml SOLUCIÓN INYECTABLE, 5 ampollas de 20 ml", presentacion: "Ampolla", stockMinimo: 5, categoria: "ampollas" },
+  { nombreComercial: "ULTIVA 1 mg POLVO PARA CONCENTRADO PARA SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN, 5 viales", presentacion: "Vial", stockMinimo: 5, categoria: "vial" },
+  { nombreComercial: "ULTIVA 2 mg POLVO PARA CONCENTRADO PARA SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN, 5 viales", presentacion: "Vial", stockMinimo: 10, categoria: "vial" },
+  { nombreComercial: "ULTIVA 5 mg POLVO PARA CONCENTRADO PARA SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN, 5 viales", presentacion: "Vial", stockMinimo: 10, categoria: "vial" },
+  { nombreComercial: "VIBRAVENOSA 100 MG SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN, 1 ampolla de 5 ml", presentacion: "Ampolla", stockMinimo: 10, categoria: "ampollas" },
+  { nombreComercial: "levobupivacaína NORMON 1,25mg/ml bolsa 100ml", presentacion: "bolsa", stockMinimo: 5, categoria: "otros" },
+  { nombreComercial: "dexmedetomidina altan 4 microgramos/ml", presentacion: "bolsa 100ml", stockMinimo: 8, categoria: "otros" },
+  { nombreComercial: "sugamadex normon 100mg/ml", presentacion: "vial", stockMinimo: 10, categoria: "vial" },
+  { nombreComercial: "ertapenem aurovista 1g", presentacion: "vial", stockMinimo: 10, categoria: "vial" },
+  { nombreComercial: "gobemicina 1g", presentacion: "vial", stockMinimo: 10, categoria: "vial" },
+  { nombreComercial: "teofilina anhidra Eufilina venosa 200mg", presentacion: "ampollas", stockMinimo: 10, categoria: "ampollas" },
+  { nombreComercial: "konakion 2mg/0,2ml pediatrico", presentacion: "ampollas", stockMinimo: 15, categoria: "ampollas" },
+  { nombreComercial: "lipoplus 20%", presentacion: "frasco", stockMinimo: 10, categoria: "otros" },
+  { nombreComercial: "urapidil accord 5mg/ml solucion inyectable para perfusion efg ampolas 10ml", presentacion: "ampollas", stockMinimo: 20, categoria: "ampollas" },
+];
+
+async function importarNoCargoFaltante() {
+  const meds = await getMedicamentos();
+  const key = (m) => (m.nombreComercial || "").toLowerCase().trim();
+  const existing = new Set(meds.map(key));
+  let added = 0;
+  for (const d of DOTACION_NO_CARGO) {
+    const k = (d.nombreComercial || "").toLowerCase().trim();
+    if (existing.has(k)) continue;
+    await addMedicamento({
+      barcode: null,
+      nombreComercial: d.nombreComercial,
+      principioActivo: d.nombreComercial.split(",")[0].trim(),
+      dosis: "",
+      presentacion: d.presentacion || "",
+      grupoTerapeutico: "No cargo",
+      categoria: "otros",
+      stockMinimo: d.stockMinimo || 0,
+      ubicacion: "",
+      notas: "Medicamento de no cargo",
+      foto: null,
+      esDotacion: false,
+      tipoStock: "no_cargo",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    existing.add(k);
+    added++;
+  }
+  return added;
+}
+
+async function seedNoCargoIfEmpty() {
+  const n = await importarNoCargoFaltante();
+  return { seeded: n > 0, count: n };
+}
+
+
+// ESTUPEFACIENTES (requieren médico solicitante en salidas)
+const DOTACION_ESTUPEFACIENTES = [
+  { nombreComercial: "Fentanilo trasmucosal con aplicador bucal 200mcg", presentacion: "Caja 3 Comp.", stockMinimo: 0, categoria: "comprimidos" },
+  { nombreComercial: "Fentanilo, FENTANEST®", presentacion: "Caja 5 Amp.", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "Meperidina, Dolantina® 50 mg / ml", presentacion: "Caja 10 Amp.", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "Morfina BRAUN® 10 mg / ml", presentacion: "Caja 10 Amp.", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "Remifentanilo, ULTIVA 2 mg POLVO PARA CONCENTRADO PARA SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN", presentacion: "Caja 5 viales", stockMinimo: 0, categoria: "vial" },
+  { nombreComercial: "Remifentanilo, ULTIVA 5 mg POLVO PARA CONCENTRADO PARA SOLUCIÓN INYECTABLE Y PARA PERFUSIÓN", presentacion: "Caja 5 viales", stockMinimo: 0, categoria: "vial" },
+  { nombreComercial: "Tramadol + paracetamol 37,5 mg/ 325 mg ZALDIAR®", presentacion: "Caja 20 Comp.", stockMinimo: 0, categoria: "comprimidos" },
+  { nombreComercial: "Tramadol 100 mg / 2 ml, ADOLONTA®", presentacion: "Caja 5 Amp.", stockMinimo: 0, categoria: "ampollas" },
+  { nombreComercial: "Tramadol Hidrocloruro 50 mg, ADOLONTA®", presentacion: "Caja 20 Comp.", stockMinimo: 0, categoria: "comprimidos" },
+  { nombreComercial: "Fentanilo trasmucosal con aplicador bucal 600mcg", presentacion: "Caja 15 Comp.", stockMinimo: 0, categoria: "comprimidos" },
+  { nombreComercial: "Tramadol hidrocloruro, Dexketoprofeno 75 mg / 25 mg ENANPLUS®", presentacion: "Caja 20 Comp.", stockMinimo: 0, categoria: "comprimidos" },
+];
+
+async function importarHospitalarioFaltante() {
+  const meds = await getMedicamentos();
+  const key = (m) => (m.nombreComercial || "").toLowerCase().trim();
+  const existing = new Set(meds.map(key));
+  let added = 0;
+  for (const d of DOTACION_HOSPITALARIO) {
+    const k = (d.nombreComercial || "").toLowerCase().trim();
+    if (existing.has(k)) continue;
+    await addMedicamento({
+      barcode: null,
+      nombreComercial: d.nombreComercial,
+      principioActivo: d.nombreComercial.split(",")[0].trim(),
+      dosis: "",
+      presentacion: d.presentacion || "",
+      grupoTerapeutico: "Uso hospitalario",
+      categoria: d.categoria || "ampollas",
+      stockMinimo: d.stockMinimo || 0,
+      ubicacion: "",
+      notas: "Uso hospitalario",
+      foto: null,
+      esDotacion: false,
+      tipoStock: "hospitalario",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    existing.add(k);
+    added++;
+  }
+  return added;
+}
+
+async function seedHospitalarioIfEmpty() {
+  const n = await importarHospitalarioFaltante();
+  return { seeded: n > 0, count: n };
+}
+
+async function importarEstupefacientesFaltante() {
+  const meds = await getMedicamentos();
+  const key = (m) => (m.nombreComercial || "").toLowerCase().trim();
+  const existing = new Set(meds.map(key));
+  let added = 0;
+  for (const d of DOTACION_ESTUPEFACIENTES) {
+    const k = (d.nombreComercial || "").toLowerCase().trim();
+    if (existing.has(k)) {
+      // marcar como estupefaciente si ya existe
+      const med = meds.find(m => key(m) === k);
+      if (med && !med.esEstupefaciente) {
+        med.esEstupefaciente = true;
+        med.tipoStock = "estupefaciente";
+        med.updatedAt = new Date().toISOString();
+        await updateMedicamento(med);
+      }
+      continue;
+    }
+    await addMedicamento({
+      barcode: null,
+      nombreComercial: d.nombreComercial,
+      principioActivo: d.nombreComercial.split(",")[0].trim(),
+      dosis: "",
+      presentacion: d.presentacion || "",
+      grupoTerapeutico: "Estupefaciente",
+      categoria: d.categoria || "otros",
+      stockMinimo: d.stockMinimo || 0,
+      ubicacion: "",
+      notas: "Estupefaciente — requiere médico solicitante en salidas",
+      foto: null,
+      esDotacion: false,
+      tipoStock: "estupefaciente",
+      esEstupefaciente: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    existing.add(k);
+    added++;
+  }
+  return added;
+}
+
+async function seedEstupefacientesIfEmpty() {
+  const n = await importarEstupefacientesFaltante();
+  return { seeded: n > 0, count: n };
+}
