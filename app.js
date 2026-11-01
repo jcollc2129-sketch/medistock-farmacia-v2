@@ -438,6 +438,16 @@ function closeDetalle() {
   document.getElementById('modal-detalle').classList.remove('show');
 }
 
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('show');
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('show');
+}
+
+
 // ========== NUEVO / EDITAR MEDICAMENTO ==========
 function openNuevoMed() {
   editingMedId = null;
@@ -451,38 +461,61 @@ function openNuevoMed() {
 }
 
 async function openEditarMed() {
-  const id = parseInt(document.getElementById('detalle-med-id').value);
-  const med = await getMedicamentoById(id);
-  if (!med) return;
+  try {
+    const rawId = document.getElementById('detalle-med-id')?.value;
+    const id = parseInt(rawId);
+    if (!id) {
+      showToast('No se pudo abrir el editor');
+      return;
+    }
+    const med = await getMedicamentoById(id);
+    if (!med) {
+      showToast('Medicamento no encontrado');
+      return;
+    }
 
-  editingMedId = id;
-  currentPhoto = med.foto || null;
-  document.getElementById('form-med-title').textContent = 'Editar medicamento';
-  document.getElementById('med-barcode').value = med.barcode || '';
-  document.getElementById('med-nombre').value = med.nombreComercial || '';
-  document.getElementById('med-principio').value = med.principioActivo || '';
-  document.getElementById('med-dosis').value = med.dosis || '';
-  document.getElementById('med-presentacion').value = med.presentacion || '';
-  document.getElementById('med-grupo').value = med.grupoTerapeutico || '';
-  document.getElementById('med-stock-minimo').value = med.stockMinimo != null ? med.stockMinimo : 0;
-  const ts = document.getElementById('med-tipo-stock');
-  if (ts) ts.value = med.tipoStock || 'cargo';
-  const est = document.getElementById('med-estupefaciente');
-  if (est) est.checked = !!med.esEstupefaciente;
-  document.getElementById('med-categoria').value = med.categoria || 'comprimidos';
-  document.getElementById('med-ubicacion').value = med.ubicacion || '';
-  document.getElementById('med-notas').value = med.notas || '';
+    editingMedId = id;
+    currentPhoto = med.foto || null;
+    const set = (idEl, val) => {
+      const el = document.getElementById(idEl);
+      if (el) el.value = val != null ? val : '';
+    };
+    const title = document.getElementById('form-med-title');
+    if (title) title.textContent = 'Editar medicamento';
+    set('med-barcode', med.barcode || '');
+    set('med-nombre', med.nombreComercial || '');
+    set('med-principio', med.principioActivo || '');
+    set('med-dosis', med.dosis || '');
+    set('med-presentacion', med.presentacion || '');
+    set('med-grupo', med.grupoTerapeutico || '');
+    set('med-stock-minimo', med.stockMinimo != null ? med.stockMinimo : 0);
+    const ts = document.getElementById('med-tipo-stock');
+    if (ts) ts.value = med.tipoStock || 'cargo';
+    const est = document.getElementById('med-estupefaciente');
+    if (est) est.checked = !!med.esEstupefaciente;
+    set('med-categoria', med.categoria || 'comprimidos');
+    set('med-ubicacion', med.ubicacion || '');
+    set('med-notas', med.notas || '');
 
-  const preview = document.getElementById('med-foto-preview');
-  if (med.foto) {
-    preview.src = med.foto;
-    preview.style.display = 'block';
-  } else {
-    preview.style.display = 'none';
+    const preview = document.getElementById('med-foto-preview');
+    if (preview) {
+      if (med.foto) {
+        preview.src = med.foto;
+        preview.style.display = 'block';
+      } else {
+        preview.src = '';
+        preview.style.display = 'none';
+      }
+    }
+
+    closeDetalle();
+    const modal = document.getElementById('modal-med');
+    if (modal) modal.classList.add('show');
+    else showToast('Formulario de edición no disponible');
+  } catch (err) {
+    console.error(err);
+    showToast('Error al abrir editor: ' + (err.message || err));
   }
-
-  closeDetalle();
-  document.getElementById('modal-med').classList.add('show');
 }
 
 function closeModalMed() {
@@ -2078,9 +2111,18 @@ function fromDetalleExtraSalida() {
 }
 
 function fromDetalleExtraEditar() {
-  const modulo = document.getElementById('dx-modulo').value;
-  const id = parseInt(document.getElementById('dx-id').value);
-  closeDetalleExtra();
-  if (modulo === 'material') openMaterialForm(id);
-  else openExtraForm(modulo, id);
+  try {
+    const modulo = document.getElementById('dx-modulo')?.value || 'material';
+    const id = parseInt(document.getElementById('dx-id')?.value);
+    if (!id) {
+      showToast('No se pudo abrir el editor');
+      return;
+    }
+    closeDetalleExtra();
+    if (modulo === 'material') openMaterialForm(id);
+    else openExtraForm(modulo, id);
+  } catch (err) {
+    console.error(err);
+    showToast('Error al editar: ' + (err.message || err));
+  }
 }
