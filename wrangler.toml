@@ -1,0 +1,7 @@
+name = "medistock-farmacia"
+compatibility_date = "2024-10-01"
+pages_build_output_dir = "."
+
+[[kv_namespaces]]
+binding = "MEDISTOCK_KV"
+id = "695a0a12147e40f69bc40772dfae0772"
