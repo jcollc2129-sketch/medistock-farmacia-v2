@@ -630,59 +630,129 @@ function removePhoto() {
 }
 
 // ========== BARCODE SCANNER ==========
-function startScanner(targetInputId) {
+let scannerBusy = false;
+let scannerTargetId = null;
+
+async function forceStopScannerInstance() {
+  if (!html5QrCode) return;
+  const inst = html5QrCode;
+  html5QrCode = null;
+  try {
+    if (inst.isScanning) await inst.stop();
+  } catch (e) {
+    try { await inst.stop(); } catch (e2) {}
+  }
+  try { inst.clear(); } catch (e) {}
+}
+
+function stopScanner() {
+  // Cerrar UI siempre, aunque la cámara falle
+  const overlay = document.getElementById('scanner-overlay');
+  const container = document.getElementById('scanner-container');
+  if (overlay) {
+    overlay.style.display = 'none';
+  }
+  scannerBusy = false;
+  scannerTargetId = null;
+  forceStopScannerInstance().then(() => {
+    if (container) container.innerHTML = '';
+  }).catch(() => {
+    if (container) container.innerHTML = '';
+  });
+}
+
+async function startScanner(targetInputId) {
   const overlay = document.getElementById('scanner-overlay');
   const container = document.getElementById('scanner-container');
   if (!overlay || !container) {
     showToast('Error del escáner');
     return;
   }
-  overlay.style.display = 'flex';
-  container.innerHTML = '';
-
-  if (html5QrCode) {
-    html5QrCode.stop().catch(() => {});
+  if (typeof Html5Qrcode === 'undefined') {
+    showToast('Escáner no cargado. Abre la app una vez con internet e instálala.');
+    return;
+  }
+  if (!window.isSecureContext && location.hostname !== 'localhost') {
+    showToast('La cámara requiere HTTPS (o instalar la app como PWA).');
+    return;
+  }
+  if (scannerBusy) {
+    // Segunda pulsación: reiniciar limpio
+    stopScanner();
+    await new Promise(r => setTimeout(r, 350));
   }
 
-  html5QrCode = new Html5Qrcode('scanner-container');
-  const config = { fps: 10, qrbox: { width: 280, height: 160 } };
+  scannerBusy = true;
+  scannerTargetId = targetInputId;
 
-  html5QrCode.start(
-    { facingMode: 'environment' },
-    config,
-    (decodedText) => {
+  // Liberar instancia anterior por completo antes de crear otra
+  await forceStopScannerInstance();
+  container.innerHTML = '';
+  overlay.style.display = 'flex';
+
+  try {
+    html5QrCode = new Html5Qrcode('scanner-container', { verbose: false });
+    const config = {
+      fps: 8,
+      qrbox: { width: 240, height: 240 },
+      aspectRatio: 1.0,
+      disableFlip: false
+    };
+
+    const onSuccess = (decodedText) => {
+      const target = scannerTargetId;
       stopScanner();
-      if (targetInputId === '_login_qr_') {
+      if (target === '_login_qr_') {
         handleQrLogin(decodedText);
         return;
       }
-      const input = document.getElementById(targetInputId);
+      const input = document.getElementById(target);
       if (input) input.value = decodedText;
       showToast('Código leído: ' + decodedText);
+      if (target === 'mov-barcode') lookupBarcodeForMov(decodedText);
+    };
 
-      if (targetInputId === 'mov-barcode') {
-        lookupBarcodeForMov(decodedText);
+    const onError = () => {}; // frames sin código: ignorar
+
+    let started = false;
+    const tryStart = async (cameraConfig) => {
+      await html5QrCode.start(cameraConfig, config, onSuccess, onError);
+      started = true;
+    };
+
+    try {
+      await tryStart({ facingMode: 'environment' });
+    } catch (e1) {
+      console.warn('cam environment', e1);
+      try {
+        await tryStart({ facingMode: 'user' });
+      } catch (e2) {
+        console.warn('cam user', e2);
+        const cams = await Html5Qrcode.getCameras().catch(() => []);
+        if (cams && cams.length) {
+          await tryStart(cams[0].id);
+        } else {
+          throw e2 || e1;
+        }
       }
-    },
-    () => {}
-  ).catch(err => {
-    showToast('No se pudo acceder a la cámara. Usa HTTPS o permite el permiso.');
+    }
+    if (!started) throw new Error('No start');
+  } catch (err) {
     console.error(err);
+    const msg = (err && err.message) ? String(err.message) : String(err);
+    if (/NotAllowed|Permission|denied/i.test(msg)) {
+      showToast('Permiso de cámara denegado. Actívalo en Ajustes del navegador.');
+    } else if (/NotFound|DevicesNotFound/i.test(msg)) {
+      showToast('No se encontró cámara en este dispositivo.');
+    } else if (/already|in progress|running/i.test(msg)) {
+      showToast('Cámara ocupada. Pulsa Cerrar e inténtalo de nuevo.');
+      stopScanner();
+      return;
+    } else {
+      showToast('No se pudo abrir la cámara. Cierra e inténtalo otra vez.');
+    }
     stopScanner();
-  });
-}
-
-function stopScanner() {
-  if (html5QrCode) {
-    html5QrCode.stop().then(() => {
-      html5QrCode.clear();
-      html5QrCode = null;
-    }).catch(() => {});
   }
-  const overlay = document.getElementById('scanner-overlay');
-  const container = document.getElementById('scanner-container');
-  if (overlay) overlay.style.display = 'none';
-  if (container) container.innerHTML = '';
 }
 
 async function lookupBarcodeForMov(barcode) {

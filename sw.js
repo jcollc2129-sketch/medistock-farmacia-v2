@@ -19,6 +19,7 @@ const ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
+    // Cache one-by-one so a single failure does not break offline
     for (const url of ASSETS) {
       try {
         await cache.add(url);
@@ -44,6 +45,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
+  // API sync: network only (fail gracefully offline in app)
   if (url.pathname.includes('/api/')) {
     event.respondWith(
       fetch(req).catch(() => new Response(JSON.stringify({ offline: true }), {
@@ -54,6 +56,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Navigation: app shell offline
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req).catch(async () => {
@@ -64,6 +67,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Same-origin: cache first, then network
   if (url.origin === self.location.origin) {
     event.respondWith((async () => {
       const cached = await caches.match(req);
@@ -76,6 +80,7 @@ self.addEventListener('fetch', (event) => {
         }
         return res;
       } catch (e) {
+        // fallback index for HTML
         if (req.headers.get('accept') && req.headers.get('accept').includes('text/html')) {
           const cache = await caches.open(CACHE_NAME);
           return (await cache.match('./index.html')) || (await cache.match('index.html'));
@@ -86,6 +91,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // External (CDN): cache if available
   event.respondWith(
     caches.match(req).then(cached => cached || fetch(req).then(res => {
       if (res && res.status === 200) {
