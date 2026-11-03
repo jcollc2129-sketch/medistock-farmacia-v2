@@ -1,6 +1,6 @@
 // MediStock - IndexedDB Database Layer
 const DB_NAME = 'MediStockDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 let db = null;
 
@@ -78,6 +78,10 @@ function openDB() {
         s.createIndex('nombre', 'nombre', { unique: false });
       }
       // Config
+      if (!database.objectStoreNames.contains('kits')) {
+        const ks = database.createObjectStore('kits', { keyPath: 'id' });
+        ks.createIndex('nombre', 'nombre', { unique: false });
+      }
       if (!database.objectStoreNames.contains('config')) {
         database.createObjectStore('config', { keyPath: 'key' });
       }
@@ -526,6 +530,36 @@ async function updateExtraItem(storeName, item) {
   return new Promise((resolve, reject) => {
     const tx = database.transaction(storeName, 'readwrite');
     const req = tx.objectStore(storeName).put(item);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+
+// ========== KITS / CHECKLIST ==========
+async function getKits() {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('kits', 'readonly');
+    const req = tx.objectStore('kits').getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function getKitById(id) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('kits', 'readonly');
+    const req = tx.objectStore('kits').get(id);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function putKit(kit) {
+  const database = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction('kits', 'readwrite');
+    const req = tx.objectStore('kits').put(kit);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });

@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   await openDB();
+  try { if (typeof ensureKitsSeeded === "function") await ensureKitsSeeded(); } catch (e) {}
   await initDefaultAdmin();
   const seed = await seedDotacionIfEmpty();
   if (seed.seeded) {
@@ -206,6 +207,13 @@ function navigate(screen) {
   if (screen === 'material') { loadMaterialList(); loadMaterialMovimientos(); }
   if (screen === 'laboratorio') loadExtraList('laboratorio');
   if (screen === 'vacunas') loadExtraList('vacunas');
+  if (screen === 'checklist') loadChecklistKits();
+  if (screen === 'checklist-detail') {
+    loadKitDetail();
+    const navC = document.querySelector('.nav-item[data-screen="checklist"]');
+    if (navC) navC.classList.add('active');
+  }
+  if (screen === 'movimientos') loadMovimientos();
   if (screen === 'usuarios') {
     const btn = document.getElementById('btn-header-usuarios');
   }
@@ -2195,4 +2203,199 @@ function fromDetalleExtraEditar() {
     console.error(err);
     showToast('Error al editar: ' + (err.message || err));
   }
+}
+
+
+// ========== CHECKLIST / KITS ==========
+const KIT_DEFINITIONS = [
+  { id: 'carro-parada-triaje', nombre: 'Carro de parada triaje', icon: '🚑' },
+  { id: 'mochila-sva1', nombre: 'Mochila SVA1', icon: '🎒' },
+  { id: 'mochila-sva2', nombre: 'Mochila SVA2', icon: '🎒' },
+  { id: 'mochila-sva3', nombre: 'Mochila SVA3', icon: '🎒' },
+  { id: 'mochila-svb1', nombre: 'Mochila SVB1', icon: '🎒' },
+  { id: 'mochila-mov1', nombre: 'Mochila MOV1', icon: '🎒' },
+  { id: 'mochila-mov2', nombre: 'Mochila MOV2', icon: '🎒' },
+  { id: 'mochila-buzo', nombre: 'Mochila buzo', icon: '🎒' },
+  { id: 'carro-parada-qx1', nombre: 'Carro parada Quirófano 1', icon: '🏥' },
+  { id: 'carro-parada-qx2', nombre: 'Carro parada Quirófano 2', icon: '🏥' },
+  { id: 'mueble-uci', nombre: 'Mueble UCI', icon: '🛏️' },
+  { id: 'carro-parada-uci', nombre: 'Carro parada UCI', icon: '🚑' }
+];
+
+let currentKitId = null;
+
+async function ensureKitsSeeded() {
+  const existing = await getKits();
+  const byId = Object.fromEntries(existing.map(k => [k.id, k]));
+  for (const def of KIT_DEFINITIONS) {
+    if (!byId[def.id]) {
+      await putKit({
+        id: def.id,
+        nombre: def.nombre,
+        icon: def.icon,
+        items: [],
+        updatedAt: new Date().toISOString()
+      });
+    }
+  }
+}
+
+async function loadChecklistKits() {
+  await ensureKitsSeeded();
+  const kits = await getKits();
+  const order = KIT_DEFINITIONS.map(d => d.id);
+  kits.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  const el = document.getElementById('checklist-kits');
+  if (!el) return;
+  el.innerHTML = kits.map(k => {
+    const n = (k.items || []).length;
+    const def = KIT_DEFINITIONS.find(d => d.id === k.id);
+    const icon = (def && def.icon) || k.icon || '✅';
+    return `<div class="card med-item" onclick="openKitDetail('${k.id}')">
+      <div class="med-photo placeholder">${icon}</div>
+      <div class="med-info">
+        <div class="name">${escapeHtml(k.nombre)}</div>
+        <div class="principio">${n} ítem${n === 1 ? '' : 's'} en lista fija</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openKitDetail(kitId) {
+  currentKitId = kitId;
+  navigate('checklist-detail');
+}
+
+async function loadKitDetail() {
+  if (!currentKitId) {
+    navigate('checklist');
+    return;
+  }
+  const kit = await getKitById(currentKitId);
+  if (!kit) {
+    navigate('checklist');
+    return;
+  }
+  document.getElementById('kit-detail-title').textContent = kit.nombre;
+  const el = document.getElementById('kit-items-list');
+  const items = kit.items || [];
+  if (!items.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">✅</div>Lista vacía<br>
+      <button class="btn btn-primary mt-16" onclick="openKitAddItem()">Añadir medicamento o material</button></div>`;
+    return;
+  }
+
+  // Resolve current stock by linked id when possible
+  const meds = await getMedicamentos();
+  const mats = await getMateriales();
+  const medById = Object.fromEntries(meds.map(m => [m.id, m]));
+  const matById = Object.fromEntries(mats.map(m => [m.id, m]));
+
+  let html = '';
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    let stock = null;
+    let nombre = it.nombre || '—';
+    if (it.tipo === 'medicamento' && it.refId && medById[it.refId]) {
+      nombre = medById[it.refId].nombreComercial || medById[it.refId].principioActivo || nombre;
+      stock = await getStockTotal(it.refId);
+    } else if (it.tipo === 'material' && it.refId && matById[it.refId]) {
+      nombre = matById[it.refId].nombre || nombre;
+      stock = await getStockMaterial(it.refId);
+    }
+    const min = it.stockMinimo || 0;
+    const bajo = stock != null && min > 0 && stock < min;
+    const tipoLabel = it.tipo === 'material' ? 'Material' : 'Medicamento';
+    html += `<div class="card">
+      <div class="flex-between">
+        <div>
+          <div class="name">${escapeHtml(nombre)}</div>
+          <div class="text-sm text-muted">${tipoLabel}${it.notas ? ' · ' + escapeHtml(it.notas) : ''}</div>
+          <div class="meta mt-8">
+            <span class="badge ${bajo ? 'badge-bajo' : 'badge-stock'}">Mín. ${min}${stock != null ? ' · Stock ' + stock : ''}</span>
+            ${bajo ? '<span class="badge badge-bajo">Bajo mínimo</span>' : ''}
+          </div>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="removeKitItem(${i})" title="Quitar">🗑</button>
+      </div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+async function openKitAddItem() {
+  if (!currentKitId) return;
+  document.getElementById('kit-item-kit-id').value = currentKitId;
+  document.getElementById('kit-item-min').value = '1';
+  document.getElementById('kit-item-notas').value = '';
+  document.getElementById('kit-item-tipo').value = 'medicamento';
+  await fillKitItemSelect();
+  openModal('modal-kit-item');
+}
+
+async function fillKitItemSelect() {
+  const tipo = document.getElementById('kit-item-tipo').value;
+  const sel = document.getElementById('kit-item-ref');
+  if (tipo === 'material') {
+    const mats = await getMateriales();
+    mats.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+    sel.innerHTML = mats.length
+      ? mats.map(m => `<option value="${m.id}">${escapeHtml(m.nombre)}</option>`).join('')
+      : '<option value="">— Sin material en inventario —</option>';
+  } else {
+    const meds = await getMedicamentos();
+    meds.sort((a, b) => (a.nombreComercial || a.principioActivo || '').localeCompare(b.nombreComercial || b.principioActivo || ''));
+    sel.innerHTML = meds.length
+      ? meds.map(m => `<option value="${m.id}">${escapeHtml(m.nombreComercial || m.principioActivo || ('#' + m.id))}</option>`).join('')
+      : '<option value="">— Sin medicamentos —</option>';
+  }
+}
+
+async function saveKitItem(e) {
+  e.preventDefault();
+  const kitId = document.getElementById('kit-item-kit-id').value;
+  const tipo = document.getElementById('kit-item-tipo').value;
+  const refId = parseInt(document.getElementById('kit-item-ref').value);
+  const min = parseInt(document.getElementById('kit-item-min').value) || 1;
+  const notas = (document.getElementById('kit-item-notas').value || '').trim() || null;
+  if (!kitId || !refId) {
+    showToast('Elige un producto');
+    return;
+  }
+  let nombre = '';
+  if (tipo === 'material') {
+    const m = await getMaterialById(refId);
+    nombre = m ? m.nombre : 'Material';
+  } else {
+    const m = await getMedicamentoById(refId);
+    nombre = m ? (m.nombreComercial || m.principioActivo) : 'Medicamento';
+  }
+  const kit = await getKitById(kitId);
+  if (!kit) return;
+  kit.items = kit.items || [];
+  // avoid exact duplicate same ref+tipo
+  if (kit.items.some(i => i.tipo === tipo && i.refId === refId)) {
+    showToast('Ya está en esta lista');
+    return;
+  }
+  kit.items.push({ tipo, refId, nombre, stockMinimo: min, notas });
+  kit.updatedAt = new Date().toISOString();
+  await putKit(kit);
+  closeModal('modal-kit-item');
+  showToast('Añadido al checklist');
+  scheduleSync();
+  loadKitDetail();
+}
+
+async function removeKitItem(index) {
+  if (!currentKitId) return;
+  if (!confirm('¿Quitar este ítem de la lista fija?')) return;
+  const kit = await getKitById(currentKitId);
+  if (!kit || !kit.items) return;
+  kit.items.splice(index, 1);
+  kit.updatedAt = new Date().toISOString();
+  await putKit(kit);
+  showToast('Eliminado de la lista');
+  scheduleSync();
+  loadKitDetail();
 }

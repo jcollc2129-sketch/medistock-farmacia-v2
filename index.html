@@ -52,7 +52,8 @@
         <div style="display:flex;gap:8px;align-items:center;">
           <button class="btn btn-sm btn-secondary" onclick="manualSync()" title="Sincronizar">☁️</button>
           <button class="btn btn-sm btn-secondary" onclick="exportBackupFile()" title="Exportar copia">💾</button>
-          <button class="btn btn-sm btn-secondary" onclick="cargarDotacion()" title="Cargar dotación mínima">📋</button>
+          <button class="btn btn-sm btn-secondary" onclick="cargarDotacion()" title="Cargar catálogos">📦</button>
+          <button class="btn btn-sm btn-secondary" onclick="navigate('movimientos')" title="Historial">📋</button>
           <button class="btn btn-sm btn-secondary" id="btn-header-usuarios" onclick="navigate('usuarios')" title="Usuarios">👥</button>
           <button class="btn btn-sm btn-secondary" onclick="importBackupFile()" title="Importar copia">📥</button>
           <button class="btn btn-sm btn-secondary" onclick="logout()" title="Cerrar sesión">Salir</button>
@@ -204,6 +205,24 @@
       <div id="vacunas-list"></div>
     </div>
 
+
+    <!-- CHECKLIST MOCHILAS / CARROS -->
+    <div id="screen-checklist" class="screen">
+      <h2 class="section-title">✅ Checklist</h2>
+      <p class="text-sm text-muted mb-8">Listas fijas de medicamentos y material por mochila o carro (stock mínimo)</p>
+      <div id="checklist-kits"></div>
+    </div>
+
+    <div id="screen-checklist-detail" class="screen">
+      <div class="flex-between mb-8">
+        <button class="btn btn-sm btn-secondary" onclick="navigate('checklist')">← Volver</button>
+        <button class="btn btn-sm btn-primary" onclick="openKitAddItem()">＋ Añadir ítem</button>
+      </div>
+      <h2 class="section-title" id="kit-detail-title">—</h2>
+      <p class="text-sm text-muted mb-8" id="kit-detail-hint">Dotación mínima de este equipo</p>
+      <div id="kit-items-list"></div>
+    </div>
+
     <nav class="bottom-nav">
       <button class="nav-item active" data-screen="dashboard" onclick="navigate('dashboard')">
         <span class="icon">🏠</span>
@@ -217,10 +236,6 @@
         <span class="icon">⚠️</span>
         <span>Alertas</span>
       </button>
-      <button class="nav-item" data-screen="movimientos" onclick="navigate('movimientos')">
-        <span class="icon">📋</span>
-        <span>Historial</span>
-      </button>
       <button class="nav-item" data-screen="cargo" onclick="navigate('cargo')">
         <span class="icon">📦</span>
         <span>Cargo</span>
@@ -228,6 +243,10 @@
       <button class="nav-item" data-screen="material" onclick="navigate('material')">
         <span class="icon">🩹</span>
         <span>Material</span>
+      </button>
+      <button class="nav-item" data-screen="checklist" onclick="navigate('checklist')">
+        <span class="icon">✅</span>
+        <span>Checklist</span>
       </button>
       <button class="nav-item" data-screen="laboratorio" onclick="navigate('laboratorio')">
         <span class="icon">🧪</span>
@@ -697,7 +716,7 @@
   <div id="toast" class="toast"></div>
 
   <!-- Scripts -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="vendor-html5-qrcode.min.js"></script>
   <script src="db.js"></script>
   <script src="dotacion.js"></script>
   <script src="material_catalog.js"></script>
@@ -904,6 +923,39 @@
           <input type="text" id="extra-mov-motivo" placeholder="Uso, recepción…">
         </div>
         <button type="submit" class="btn btn-primary">Registrar</button>
+      </form>
+    </div>
+  </div>
+
+
+  <div class="modal-overlay" id="modal-kit-item">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Añadir al checklist</h2>
+        <button class="modal-close" onclick="closeModal('modal-kit-item')">×</button>
+      </div>
+      <form id="form-kit-item" onsubmit="saveKitItem(event)">
+        <input type="hidden" id="kit-item-kit-id">
+        <div class="form-group">
+          <label>Tipo *</label>
+          <select id="kit-item-tipo" onchange="fillKitItemSelect()">
+            <option value="medicamento">Medicamento</option>
+            <option value="material">Material sanitario</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Producto *</label>
+          <select id="kit-item-ref" required></select>
+        </div>
+        <div class="form-group">
+          <label>Cantidad mínima *</label>
+          <input type="number" id="kit-item-min" min="1" value="1" required>
+        </div>
+        <div class="form-group">
+          <label>Notas</label>
+          <input type="text" id="kit-item-notas" placeholder="Opcional">
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar en lista fija</button>
       </form>
     </div>
   </div>
