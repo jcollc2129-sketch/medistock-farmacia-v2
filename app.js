@@ -23,6 +23,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   await openDB();
+  // 1) Primero bajar la nube (Safari y app del icono no comparten IndexedDB)
+  try {
+    if (navigator.onLine && typeof pullFromCloud === 'function') {
+      const r = await pullFromCloud();
+      if (r && r.imported) console.log('Nube importada al inicio');
+    }
+  } catch (e) { console.warn('pull inicio', e); }
   try { if (typeof ensureKitsSeeded === "function") await ensureKitsSeeded(); } catch (e) {}
   await initDefaultAdmin();
   const seed = await seedDotacionIfEmpty();

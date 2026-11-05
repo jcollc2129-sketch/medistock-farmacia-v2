@@ -1,7 +1,24 @@
 // MediStock - Sincronización entre dispositivos (Cloudflare / Netlify / local)
 const SYNC_URL = "/api/sync";
+const LOCAL_REV_KEY = "medistock_data_rev";
 let syncTimer = null;
 let syncing = false;
+
+/** Marca que hubo un cambio real en este dispositivo (no al solo exportar). */
+function touchLocalData() {
+  const ts = new Date().toISOString();
+  try { localStorage.setItem(LOCAL_REV_KEY, ts); } catch (e) {}
+  return ts;
+}
+
+function getLocalDataRev() {
+  try {
+    return localStorage.getItem(LOCAL_REV_KEY) || "1970-01-01T00:00:00.000Z";
+  } catch (e) {
+    return "1970-01-01T00:00:00.000Z";
+  }
+}
+
 
 async function exportAllData() {
   const [users, medicamentos, lotes, movimientos, materiales, lotesMaterial, movimientosMaterial, laboratorio, vacunas, kits] = await Promise.all([
@@ -18,7 +35,7 @@ async function exportAllData() {
   ]);
   return {
     version: 4,
-    updatedAt: new Date().toISOString(),
+    updatedAt: getLocalDataRev(),
     users,
     medicamentos,
     lotes,
@@ -121,27 +138,44 @@ async function pullFromCloud() {
       }
       throw new Error((data && data.error) || ("HTTP " + res.status));
     }
-    if (!data) return { ok: true, empty: true };
+    if (!data || (!data.medicamentos && !data.users)) return { ok: true, empty: true };
 
     const local = await exportAllData();
     const remoteTime = new Date(data.updatedAt || 0).getTime();
-    const localTime = new Date(local.updatedAt || 0).getTime();
+    const localTime = new Date(getLocalDataRev()).getTime();
 
-    // Si la nube tiene datos más recientes o el local está vacío → importar
-    const localEmpty =
-      (local.medicamentos || []).length === 0 &&
-      (local.movimientos || []).length === 0;
+    const localMovs = (local.movimientos || []).length + (local.movimientosMaterial || []).length;
+    const remoteMovs = (data.movimientos || []).length + (data.movimientosMaterial || []).length;
+    const localMeds = (local.medicamentos || []).length;
+    const remoteMeds = (data.medicamentos || []).length;
 
-    if (localEmpty || remoteTime >= localTime) {
+    // Vacío de verdad (sin catálogo ni movimientos)
+    const localEmpty = localMeds === 0 && localMovs === 0;
+
+    // Preferir nube si: está vacía local, o la nube es más nueva, o la nube tiene más actividad
+    const preferRemote =
+      localEmpty ||
+      remoteTime > localTime ||
+      (remoteTime === localTime && remoteMovs > localMovs) ||
+      (localMovs === 0 && remoteMovs > 0);
+
+    if (preferRemote) {
       await importAllData(data);
+      // Alinear revisión local con la de la nube (no es un cambio local nuevo)
+      try { localStorage.setItem(LOCAL_REV_KEY, data.updatedAt || new Date().toISOString()); } catch (e) {}
       localStorage.setItem("medistock_last_sync", data.updatedAt || new Date().toISOString());
       updateSyncStatus(true);
       return { ok: true, imported: true };
     }
 
-    // Local más reciente → subir
-    await pushToCloud();
-    return { ok: true, pushed: true };
+    // Este dispositivo tiene cambios más nuevos → subir
+    if (localTime > remoteTime) {
+      await pushToCloud();
+      return { ok: true, pushed: true };
+    }
+
+    updateSyncStatus(true);
+    return { ok: true, upToDate: true };
   } catch (e) {
     console.warn("pullFromCloud failed", e);
     updateSyncStatus(false);
@@ -150,6 +184,7 @@ async function pullFromCloud() {
 }
 
 function scheduleSync() {
+  touchLocalData();
   if (syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(async () => {
     if (syncing) return;
@@ -187,19 +222,33 @@ function updateSyncStatus(ok, reason) {
 async function manualSync() {
   showToast("Sincronizando...");
   syncing = true;
-  const pull = await pullFromCloud();
-  if (pull.imported) {
-    showToast("Datos actualizados desde la nube");
-    if (typeof loadDashboard === "function") loadDashboard();
-    if (typeof loadInventario === "function") loadInventario();
-  } else {
-    const push = await pushToCloud();
-    if (push.ok) showToast("Datos guardados en la nube");
-    else if (push.offline) showToast("Sin conexión: se guardó solo en este dispositivo");
-    else if (push.localOnly) showToast("Nube no configurada: los cambios quedan solo en este móvil");
-    else showToast("No se pudo sincronizar: " + (push.error || ""));
+  try {
+    const pull = await pullFromCloud();
+    if (pull.imported) {
+      showToast("Datos actualizados desde la nube");
+      if (typeof loadDashboard === "function") loadDashboard();
+      if (typeof loadInventario === "function") loadInventario();
+      if (typeof loadCargoList === "function") loadCargoList();
+    } else if (pull.pushed) {
+      showToast("Datos guardados en la nube");
+    } else if (pull.upToDate) {
+      // Forzar subida por si el usuario pulsó ☁️ tras editar
+      const push = await pushToCloud();
+      if (push.ok) showToast("Datos guardados en la nube");
+      else if (push.offline) showToast("Sin conexión: datos solo en este dispositivo");
+      else showToast("No se pudo subir: " + (push.error || ""));
+    } else if (pull.offline) {
+      showToast("Sin conexión: datos solo en este dispositivo");
+    } else if (pull.localOnly) {
+      showToast("Nube no configurada (KV)");
+    } else {
+      const push = await pushToCloud();
+      if (push.ok) showToast("Datos guardados en la nube");
+      else showToast("No se pudo sincronizar: " + (push.error || pull.error || ""));
+    }
+  } finally {
+    syncing = false;
   }
-  syncing = false;
 }
 
 window.addEventListener("online", () => {
