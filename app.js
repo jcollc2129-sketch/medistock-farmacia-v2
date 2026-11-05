@@ -720,27 +720,57 @@ async function startScanner(targetInputId) {
 
   try {
     html5QrCode = new Html5Qrcode('scanner-container', { verbose: false });
+
+    // Códigos de barras de medicamentos (EAN, Code128…) + QR de usuarios
+    const formatsToSupport = [];
+    try {
+      const F = Html5QrcodeSupportedFormats;
+      [
+        F.EAN_13, F.EAN_8, F.CODE_128, F.CODE_39, F.CODE_93,
+        F.UPC_A, F.UPC_E, F.ITF, F.CODABAR,
+        F.QR_CODE, F.DATA_MATRIX, F.PDF_417, F.AZTEC
+      ].forEach(f => { if (f != null) formatsToSupport.push(f); });
+    } catch (e) {
+      console.warn('formats', e);
+    }
+
     const config = {
-      fps: 8,
-      qrbox: { width: 240, height: 240 },
-      aspectRatio: 1.0,
-      disableFlip: false
+      fps: 12,
+      // Caja ancha: mejor para códigos de barras horizontales
+      qrbox: (viewW, viewH) => {
+        const w = Math.floor(Math.min(viewW * 0.92, 360));
+        const h = Math.floor(Math.min(viewH * 0.35, 140));
+        return { width: Math.max(200, w), height: Math.max(80, h) };
+      },
+      aspectRatio: 1.333,
+      disableFlip: false,
+      experimentalFeatures: {
+        useBarCodeDetectorIfSupported: true
+      }
     };
+    if (formatsToSupport.length) config.formatsToSupport = formatsToSupport;
 
     const onSuccess = (decodedText) => {
       const target = scannerTargetId;
+      const code = (decodedText || '').trim();
+      if (!code) return;
       stopScanner();
       if (target === '_login_qr_') {
-        handleQrLogin(decodedText);
+        handleQrLogin(code);
         return;
       }
       const input = document.getElementById(target);
-      if (input) input.value = decodedText;
-      showToast('Código leído: ' + decodedText);
-      if (target === 'mov-barcode') lookupBarcodeForMov(decodedText);
+      if (input) {
+        input.value = code;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      showToast('Código leído: ' + code);
+      if (target === 'mov-barcode') lookupBarcodeForMov(code);
     };
 
-    const onError = () => {}; // frames sin código: ignorar
+    // No silenciar del todo: útil en depuración
+    const onError = () => {};
 
     let started = false;
     const tryStart = async (cameraConfig) => {
