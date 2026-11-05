@@ -1,2 +1,3 @@
 /api/*  /api/:splat  200
+# Archivos reales (js, css, png…) se sirven si existen en el deploy
 /*    /index.html   200

@@ -381,6 +381,8 @@ async function openDetalleMed(id) {
   document.getElementById('detalle-barcode').textContent = med.barcode || '—';
   document.getElementById('detalle-categoria').textContent = med.categoria || '—';
   document.getElementById('detalle-ubicacion').textContent = med.ubicacion || '—';
+  const elLoteDet = document.getElementById('detalle-lote');
+  if (elLoteDet) elLoteDet.textContent = med.lote || '—';
   document.getElementById('detalle-stock').textContent = stock + ' unidades';
 
   // Foto
@@ -503,6 +505,7 @@ async function openEditarMed() {
     if (est) est.checked = !!med.esEstupefaciente;
     set('med-categoria', med.categoria || 'comprimidos');
     set('med-ubicacion', med.ubicacion || '');
+    set('med-lote', med.lote || '');
     set('med-notas', med.notas || '');
 
     const preview = document.getElementById('med-foto-preview');
@@ -545,6 +548,7 @@ async function saveMedicamento(e) {
   if (tipoStock === 'estupefaciente') esEstupefaciente = true;
   const categoria = document.getElementById('med-categoria').value;
   const ubicacion = document.getElementById('med-ubicacion').value.trim();
+  const lote = ((document.getElementById('med-lote') || {}).value || '').trim();
   const notas = document.getElementById('med-notas').value.trim();
 
   if (!principio && !nombre) {
@@ -573,6 +577,7 @@ async function saveMedicamento(e) {
     esEstupefaciente,
     categoria,
     ubicacion,
+    lote: lote || null,
     notas,
     foto: currentPhoto,
     updatedAt: new Date().toISOString()
@@ -677,8 +682,23 @@ async function startScanner(targetInputId) {
     return;
   }
   if (typeof Html5Qrcode === 'undefined') {
-    showToast('Escáner no cargado. Abre la app una vez con internet e instálala.');
-    return;
+    // Intentar cargar CDN al vuelo (necesita internet una vez)
+    showToast('Cargando escáner…');
+    await new Promise((resolve) => {
+      if (typeof window.__loadHtml5Fallback === 'function') window.__loadHtml5Fallback();
+      let n = 0;
+      const t = setInterval(() => {
+        n++;
+        if (typeof Html5Qrcode !== 'undefined' || n > 25) {
+          clearInterval(t);
+          resolve();
+        }
+      }, 200);
+    });
+    if (typeof Html5Qrcode === 'undefined') {
+      showToast('Escáner no disponible. Conecta a internet, recarga e inténtalo de nuevo.');
+      return;
+    }
   }
   if (!window.isSecureContext && location.hostname !== 'localhost') {
     showToast('La cámara requiere HTTPS (o instalar la app como PWA).');
@@ -1884,6 +1904,8 @@ function openExtraForm(modulo, id) {
   document.getElementById('extra-id').value = '';
   document.getElementById('extra-modulo').value = modulo;
   currentExtraPhoto = null;
+  const elLoteNew = document.getElementById('extra-lote');
+  if (elLoteNew && !id) elLoteNew.value = '';
   const preview = document.getElementById('extra-foto-preview');
   if (preview) { preview.src = ''; preview.style.display = 'none'; }
   const titles = { laboratorio: 'Laboratorio', vacunas: 'Vacuna' };
@@ -1898,6 +1920,8 @@ function openExtraForm(modulo, id) {
       document.getElementById('extra-stock-minimo').value = item.stockMinimo != null ? item.stockMinimo : 0;
       document.getElementById('extra-ubicacion').value = item.ubicacion || '';
       document.getElementById('extra-caducidad').value = item.caducidad || '';
+      const elLote = document.getElementById('extra-lote');
+      if (elLote) elLote.value = item.lote || '';
       document.getElementById('extra-notas').value = item.notas || '';
       currentExtraPhoto = item.foto || null;
       if (preview && item.foto) { preview.src = item.foto; preview.style.display = 'block'; }
@@ -1917,6 +1941,7 @@ async function saveExtraItem(e) {
     stockMinimo: parseInt(document.getElementById('extra-stock-minimo').value) || 0,
     ubicacion: (document.getElementById('extra-ubicacion').value || '').trim() || null,
     caducidad: document.getElementById('extra-caducidad').value || null,
+    lote: ((document.getElementById('extra-lote') || {}).value || '').trim() || null,
     notas: (document.getElementById('extra-notas').value || '').trim() || null,
     foto: currentExtraPhoto || null,
     updatedAt: new Date().toISOString()
@@ -1959,7 +1984,7 @@ async function loadExtraList(modulo) {
       ${m.foto ? `<img class="med-photo" src="${m.foto}" alt="">` : `<div class="med-photo placeholder">${icon}</div>`}
       <div class="med-info">
         <div class="name">${escapeHtml(m.nombre)}</div>
-        <div class="principio">${escapeHtml(m.categoria || '')}${m.caducidad ? ' · Cad. ' + escapeHtml(m.caducidad) : ''}</div>
+        <div class="principio">${escapeHtml(m.categoria || '')}${m.lote ? ' · Lote ' + escapeHtml(m.lote) : ''}${m.caducidad ? ' · Cad. ' + escapeHtml(m.caducidad) : ''}</div>
         <div class="meta">
           <span class="badge ${bajo ? 'badge-bajo' : 'badge-stock'}">${stock}${min > 0 ? '/' + min : ''} uds</span>
           ${m.ubicacion ? ' · 📍 ' + escapeHtml(m.ubicacion) : ''}
@@ -1976,6 +2001,15 @@ async function openExtraMov(modulo, tipo) {
   document.getElementById('modal-extra-mov-title').textContent = (tipo === 'entrada' ? 'Entrada' : 'Salida') + ' · ' + (modulo === 'vacunas' ? 'Vacunas' : 'Lab');
   document.getElementById('extra-mov-cantidad').value = '1';
   document.getElementById('extra-mov-motivo').value = tipo === 'entrada' ? 'Recepción' : 'Uso';
+  const loteEl = document.getElementById('extra-mov-lote');
+  const cadEl = document.getElementById('extra-mov-caducidad');
+  if (loteEl) loteEl.value = '';
+  if (cadEl) cadEl.value = '';
+  const lg = document.getElementById('extra-mov-lote-group');
+  const cg = document.getElementById('extra-mov-cad-group');
+  // Lote y caducidad sobre todo en entradas
+  if (lg) lg.style.display = 'block';
+  if (cg) cg.style.display = tipo === 'entrada' ? 'block' : 'none';
   const items = await getExtraItems(modulo);
   items.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
   document.getElementById('extra-mov-select').innerHTML =
@@ -1989,6 +2023,8 @@ async function saveExtraMov(e) {
   const tipo = document.getElementById('extra-mov-tipo').value;
   const id = parseInt(document.getElementById('extra-mov-select').value);
   const cantidad = parseInt(document.getElementById('extra-mov-cantidad').value);
+  const loteMov = ((document.getElementById('extra-mov-lote') || {}).value || '').trim() || null;
+  const cadMov = ((document.getElementById('extra-mov-caducidad') || {}).value || '') || null;
   if (!id || !cantidad) { showToast('Completa los datos'); return; }
   const item = await getExtraItemById(modulo, id);
   if (!item) return;
@@ -2135,6 +2171,12 @@ async function openDetalleExtra(modulo, id) {
   document.getElementById('dx-stock').textContent = (item.stock != null ? item.stock : 0) + ' unidades';
   document.getElementById('dx-stock-minimo').textContent = (item.stockMinimo != null ? item.stockMinimo : 0) + ' uds';
   document.getElementById('dx-caducidad').textContent = item.caducidad || '—';
+  const dxNotas = document.getElementById('dx-notas');
+  const loteLine = item.lote ? ('Lote: ' + item.lote) : '';
+  // show lote in notas line prefix if field exists
+  if (document.getElementById('dx-referencia')) {
+    document.getElementById('dx-referencia').textContent = item.lote || '—';
+  }
   document.getElementById('dx-notas').textContent = item.notas || '—';
   document.getElementById('dx-row-cad').style.display = 'block';
   document.getElementById('dx-lotes-title').style.display = 'none';
@@ -2225,44 +2267,88 @@ const KIT_DEFINITIONS = [
 let currentKitId = null;
 
 async function ensureKitsSeeded() {
-  const existing = await getKits();
-  const byId = Object.fromEntries(existing.map(k => [k.id, k]));
-  for (const def of KIT_DEFINITIONS) {
-    if (!byId[def.id]) {
-      await putKit({
-        id: def.id,
-        nombre: def.nombre,
-        icon: def.icon,
-        items: [],
-        updatedAt: new Date().toISOString()
-      });
+  try {
+    await openDB();
+    const existing = await getKits();
+    const byId = Object.fromEntries((existing || []).map(k => [k.id, k]));
+    for (const def of KIT_DEFINITIONS) {
+      if (!byId[def.id]) {
+        await putKit({
+          id: def.id,
+          nombre: def.nombre,
+          icon: def.icon || '✅',
+          items: [],
+          updatedAt: new Date().toISOString()
+        });
+      }
     }
+  } catch (e) {
+    console.warn('ensureKitsSeeded', e);
+    throw e;
   }
 }
 
 async function loadChecklistKits() {
-  await ensureKitsSeeded();
-  const kits = await getKits();
-  const order = KIT_DEFINITIONS.map(d => d.id);
-  kits.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
   const el = document.getElementById('checklist-kits');
   if (!el) return;
-  el.innerHTML = kits.map(k => {
-    const n = (k.items || []).length;
-    const def = KIT_DEFINITIONS.find(d => d.id === k.id);
-    const icon = (def && def.icon) || k.icon || '✅';
-    return `<div class="card med-item" onclick="openKitDetail('${k.id}')">
-      <div class="med-photo placeholder">${icon}</div>
-      <div class="med-info">
-        <div class="name">${escapeHtml(k.nombre)}</div>
-        <div class="principio">${n} ítem${n === 1 ? '' : 's'} en lista fija</div>
-      </div>
-    </div>`;
-  }).join('');
+  el.innerHTML = '<p class="text-sm text-muted">Cargando checklists…</p>';
+  try {
+    await openDB();
+    await ensureKitsSeeded();
+    let kits = await getKits();
+    if (!kits || !kits.length) {
+      // Fallback visual si aún no hay filas
+      kits = KIT_DEFINITIONS.map(d => ({ id: d.id, nombre: d.nombre, icon: d.icon, items: [] }));
+    }
+    const order = KIT_DEFINITIONS.map(d => d.id);
+    kits.sort((a, b) => {
+      const ia = order.indexOf(a.id);
+      const ib = order.indexOf(b.id);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+    el.innerHTML = kits.map(k => {
+      const n = (k.items || []).length;
+      const def = KIT_DEFINITIONS.find(d => d.id === k.id);
+      const icon = (def && def.icon) || k.icon || '✅';
+      return `<div class="card med-item" onclick="openKitDetail('${k.id}')">
+        <div class="med-photo placeholder">${icon}</div>
+        <div class="med-info">
+          <div class="name">${escapeHtml(k.nombre)}</div>
+          <div class="principio">${n} ítem${n === 1 ? '' : 's'} en lista fija</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (err) {
+    console.error('checklist', err);
+    // Mostrar siempre las 12 listas aunque falle IndexedDB
+    el.innerHTML = KIT_DEFINITIONS.map(d => `
+      <div class="card med-item" onclick="openKitDetail('${d.id}')">
+        <div class="med-photo placeholder">${d.icon}</div>
+        <div class="med-info">
+          <div class="name">${escapeHtml(d.nombre)}</div>
+          <div class="principio">Toca para abrir</div>
+        </div>
+      </div>`).join('') +
+      `<p class="text-sm text-muted mt-8">Aviso: ${escapeHtml(String(err.message || err))}</p>`;
+  }
 }
 
-function openKitDetail(kitId) {
+async function openKitDetail(kitId) {
   currentKitId = kitId;
+  try {
+    await openDB();
+    let kit = await getKitById(kitId);
+    if (!kit) {
+      const def = KIT_DEFINITIONS.find(d => d.id === kitId);
+      await putKit({
+        id: kitId,
+        nombre: def ? def.nombre : kitId,
+        icon: def ? def.icon : '✅',
+        items: [],
+        updatedAt: new Date().toISOString()
+      });
+    }
+  } catch (e) { console.warn(e); }
   navigate('checklist-detail');
 }
 
