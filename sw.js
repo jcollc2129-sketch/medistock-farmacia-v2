@@ -1,6 +1,6 @@
-const CACHE_NAME = 'medistock-v36';
-const ASSETS = [
-  './',
+/* MediStock SW — compatible Safari iOS (sin respuestas redirect) */
+const CACHE_NAME = 'medistock-v37';
+const SHELL = [
   './index.html',
   './styles.css',
   './app.js',
@@ -16,25 +16,71 @@ const ASSETS = [
   './vendor-html5-qrcode.min.js'
 ];
 
+/** Safari rechaza respuestas del SW si response.redirected === true */
+function cleanResponse(response) {
+  if (!response) return null;
+  if (response.type === 'opaqueredirect' || response.redirected) {
+    return response.text().then((body) =>
+      new Response(body, {
+        status: 200,
+        statusText: 'OK',
+        headers: response.headers
+      })
+    );
+  }
+  return Promise.resolve(response);
+}
+
+async function cachePutSafe(cache, request, response) {
+  if (!response || response.status !== 200 || response.type === 'opaqueredirect') return;
+  if (response.redirected) {
+    const body = await response.clone().text();
+    const headers = new Headers(response.headers);
+    await cache.put(request, new Response(body, { status: 200, statusText: 'OK', headers }));
+    return;
+  }
+  try {
+    await cache.put(request, response.clone());
+  } catch (e) {
+    console.log('cache put skip', e);
+  }
+}
+
+async function matchShell(cache) {
+  const keys = ['./index.html', 'index.html', './', new URL('./index.html', self.location).href];
+  for (const k of keys) {
+    const hit = await cache.match(k, { ignoreSearch: true });
+    if (hit) {
+      const cleaned = await cleanResponse(hit);
+      if (cleaned) return cleaned;
+    }
+  }
+  return new Response(
+    '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head><body><h1>MediStock</h1><p>Sin conexión. Abre la app una vez con internet.</p></body></html>',
+    { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+  );
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    // Cache one-by-one so a single failure does not break offline
-    for (const url of ASSETS) {
+    for (const path of SHELL) {
       try {
-        await cache.add(url);
+        const req = new Request(path, { cache: 'reload' });
+        const res = await fetch(req);
+        await cachePutSafe(cache, path, res);
       } catch (e) {
-        console.log('SW skip cache', url, e);
+        console.log('SW skip', path, e);
       }
     }
-    self.skipWaiting();
+    await self.skipWaiting();
   })());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+    await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
 });
@@ -45,60 +91,76 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // API sync: network only (fail gracefully offline in app)
+  // API: solo red
   if (url.pathname.includes('/api/')) {
     event.respondWith(
-      fetch(req).catch(() => new Response(JSON.stringify({ offline: true }), {
-        status: 503,
-        headers: { 'Content-Type': 'application/json' }
-      }))
+      fetch(req).catch(
+        () =>
+          new Response(JSON.stringify({ offline: true }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' }
+          })
+      )
     );
     return;
   }
 
-  // Navigation: app shell offline
-  if (req.mode === 'navigate') {
+  // Navegación (abrir la app): crítico en Safari offline
+  if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
     event.respondWith(
-      fetch(req).catch(async () => {
-        const cache = await caches.open(CACHE_NAME);
-        return (await cache.match('./index.html')) || (await cache.match('index.html')) || (await cache.match('./'));
-      })
+      (async () => {
+        try {
+          const net = await fetch(req);
+          const cache = await caches.open(CACHE_NAME);
+          await cachePutSafe(cache, './index.html', net.clone());
+          const cleaned = await cleanResponse(net);
+          return cleaned || net;
+        } catch (e) {
+          const cache = await caches.open(CACHE_NAME);
+          return matchShell(cache);
+        }
+      })()
     );
     return;
   }
 
-  // Same-origin: cache first, then network
+  // Mismo origen: caché primero
   if (url.origin === self.location.origin) {
-    event.respondWith((async () => {
-      const cached = await caches.match(req);
-      if (cached) return cached;
-      try {
-        const res = await fetch(req);
-        if (res && res.status === 200) {
-          const cache = await caches.open(CACHE_NAME);
-          cache.put(req, res.clone());
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(req, { ignoreSearch: true });
+        if (cached) {
+          const cleaned = await cleanResponse(cached);
+          if (cleaned) return cleaned;
         }
-        return res;
-      } catch (e) {
-        // fallback index for HTML
-        if (req.headers.get('accept') && req.headers.get('accept').includes('text/html')) {
-          const cache = await caches.open(CACHE_NAME);
-          return (await cache.match('./index.html')) || (await cache.match('index.html'));
+        try {
+          const net = await fetch(req);
+          await cachePutSafe(cache, req, net);
+          const cleaned = await cleanResponse(net);
+          return cleaned || net;
+        } catch (e) {
+          if (cached) return cleanResponse(cached);
+          return new Response('Offline', { status: 503 });
         }
-        return new Response('Offline', { status: 503 });
-      }
-    })());
+      })()
+    );
     return;
   }
 
-  // External (CDN): cache if available
+  // CDN / externos
   event.respondWith(
-    caches.match(req).then(cached => cached || fetch(req).then(res => {
-      if (res && res.status === 200) {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then(c => c.put(req, clone));
+    (async () => {
+      const cached = await caches.match(req);
+      if (cached) {
+        const cleaned = await cleanResponse(cached);
+        if (cleaned) return cleaned;
       }
-      return res;
-    }).catch(() => cached))
+      try {
+        return await fetch(req);
+      } catch (e) {
+        return cached || new Response('', { status: 503 });
+      }
+    })()
   );
 });
