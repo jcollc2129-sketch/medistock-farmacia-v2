@@ -707,7 +707,11 @@
       Luz buena · sin brillos · 10–20 cm · espera 2–3 s<br>
       <span style="opacity:.85">Si no lee: escribe el número bajo las barras (ej. 8470006946923)</span>
     </p>
-    <button class="btn btn-danger mt-16" onclick="stopScanner()" style="margin-top:16px;">Cerrar cámara</button>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px;width:100%;max-width:400px;padding:0 12px;box-sizing:border-box">
+      <button type="button" class="btn btn-secondary" onclick="scanBarcodeFromPhoto()">📷 Foto del código (si no lee en vivo)</button>
+      <input type="file" id="barcode-photo-input" accept="image/*" capture="environment" style="display:none" onchange="handleBarcodePhoto(event)">
+      <button type="button" class="btn btn-danger" onclick="stopScanner()">Cerrar cámara</button>
+    </div>
   </div>
 
 
