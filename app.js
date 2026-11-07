@@ -689,7 +689,6 @@ async function startScanner(targetInputId) {
     return;
   }
   if (typeof Html5Qrcode === 'undefined') {
-    // Intentar cargar CDN al vuelo (necesita internet una vez)
     showToast('Cargando escáner…');
     await new Promise((resolve) => {
       if (typeof window.__loadHtml5Fallback === 'function') window.__loadHtml5Fallback();
@@ -712,7 +711,6 @@ async function startScanner(targetInputId) {
     return;
   }
   if (scannerBusy) {
-    // Segunda pulsación: reiniciar limpio
     stopScanner();
     await new Promise(r => setTimeout(r, 350));
   }
@@ -720,54 +718,24 @@ async function startScanner(targetInputId) {
   scannerBusy = true;
   scannerTargetId = targetInputId;
 
-  // Liberar instancia anterior por completo antes de crear otra
   await forceStopScannerInstance();
   container.innerHTML = '';
   overlay.style.display = 'flex';
 
   try {
+    // Misma configuración que el repo anterior (funcionaba con EAN de cajas)
+    // Sin formatsToSupport ni videoConstraints: en iPhone suelen romper la detección
     html5QrCode = new Html5Qrcode('scanner-container', { verbose: false });
-
-    // EAN-13 farmacia ES (84…), Code128, etc. + QR
-    let formatsToSupport = undefined;
-    try {
-      const F = Html5QrcodeSupportedFormats;
-      formatsToSupport = [
-        F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E,
-        F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.CODABAR,
-        F.QR_CODE, F.DATA_MATRIX
-      ].filter(f => f != null);
-    } catch (e) {}
-
-    // Zona amplia: los EAN de cajas necesitan más anchura que un QR
-    const buildConfig = (useFormats) => {
-      const cfg = {
-        fps: 15,
-        qrbox: (viewW, viewH) => {
-          const width = Math.floor(viewW * 0.95);
-          const height = Math.floor(Math.min(viewH * 0.45, 180));
-          return { width: Math.max(250, width), height: Math.max(100, height) };
-        },
-        aspectRatio: 1.777,
-        disableFlip: false,
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-        videoConstraints: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
-      };
-      if (useFormats && formatsToSupport && formatsToSupport.length) {
-        cfg.formatsToSupport = formatsToSupport;
-      }
-      return cfg;
+    const config = {
+      fps: 10,
+      qrbox: { width: 280, height: 160 },
+      aspectRatio: 1.333,
+      disableFlip: false
     };
 
     const onSuccess = (decodedText) => {
       const target = scannerTargetId;
-      let code = (decodedText || '').trim();
-      // Quitar espacios que a veces vienen en la lectura
-      code = code.replace(/\s+/g, '');
+      const code = (decodedText || '').replace(/\s+/g, '').trim();
       if (!code) return;
       stopScanner();
       if (target === '_login_qr_') {
@@ -786,46 +754,26 @@ async function startScanner(targetInputId) {
 
     const onError = () => {};
 
-    let started = false;
-    const tryStart = async (cameraIdOrConfig, useFormats) => {
-      const cfg = buildConfig(useFormats);
-      await html5QrCode.start(cameraIdOrConfig, cfg, onSuccess, onError);
-      started = true;
+    const tryStart = async (cameraConfig) => {
+      await html5QrCode.start(cameraConfig, config, onSuccess, onError);
     };
 
-    // 1) Cámara trasera + formatos farmacia
-    // 2) Si falla, sin filtro de formatos (algunos iPhone leen mejor así)
-    // 3) Otras cámaras
-    const attempts = [];
     try {
-      await tryStart({ facingMode: 'environment' }, true);
+      await tryStart({ facingMode: 'environment' });
     } catch (e1) {
-      console.warn('env+formats', e1);
-      attempts.push(e1);
+      console.warn('cam environment', e1);
       try {
-        await forceStopScannerInstance();
-        html5QrCode = new Html5Qrcode('scanner-container', { verbose: false });
-        await tryStart({ facingMode: 'environment' }, false);
+        await tryStart({ facingMode: 'user' });
       } catch (e2) {
-        console.warn('env sin formatos', e2);
-        attempts.push(e2);
-        try {
-          await forceStopScannerInstance();
-          html5QrCode = new Html5Qrcode('scanner-container', { verbose: false });
-          await tryStart({ facingMode: 'user' }, false);
-        } catch (e3) {
-          const cams = await Html5Qrcode.getCameras().catch(() => []);
-          if (cams && cams.length) {
-            await forceStopScannerInstance();
-            html5QrCode = new Html5Qrcode('scanner-container', { verbose: false });
-            await tryStart(cams[0].id, false);
-          } else {
-            throw attempts[0] || e3;
-          }
+        console.warn('cam user', e2);
+        const cams = await Html5Qrcode.getCameras().catch(() => []);
+        if (cams && cams.length) {
+          await tryStart(cams[0].id);
+        } else {
+          throw e2 || e1;
         }
       }
     }
-    if (!started) throw new Error('No start');
   } catch (err) {
     console.error(err);
     const msg = (err && err.message) ? String(err.message) : String(err);
