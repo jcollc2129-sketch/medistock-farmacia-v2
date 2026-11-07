@@ -728,38 +728,46 @@ async function startScanner(targetInputId) {
   try {
     html5QrCode = new Html5Qrcode('scanner-container', { verbose: false });
 
-    // Códigos de barras de medicamentos (EAN, Code128…) + QR de usuarios
-    const formatsToSupport = [];
+    // EAN-13 farmacia ES (84…), Code128, etc. + QR
+    let formatsToSupport = undefined;
     try {
       const F = Html5QrcodeSupportedFormats;
-      [
-        F.EAN_13, F.EAN_8, F.CODE_128, F.CODE_39, F.CODE_93,
-        F.UPC_A, F.UPC_E, F.ITF, F.CODABAR,
-        F.QR_CODE, F.DATA_MATRIX, F.PDF_417, F.AZTEC
-      ].forEach(f => { if (f != null) formatsToSupport.push(f); });
-    } catch (e) {
-      console.warn('formats', e);
-    }
+      formatsToSupport = [
+        F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E,
+        F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.CODABAR,
+        F.QR_CODE, F.DATA_MATRIX
+      ].filter(f => f != null);
+    } catch (e) {}
 
-    const config = {
-      fps: 12,
-      // Caja ancha: mejor para códigos de barras horizontales
-      qrbox: (viewW, viewH) => {
-        const w = Math.floor(Math.min(viewW * 0.92, 360));
-        const h = Math.floor(Math.min(viewH * 0.35, 140));
-        return { width: Math.max(200, w), height: Math.max(80, h) };
-      },
-      aspectRatio: 1.333,
-      disableFlip: false,
-      experimentalFeatures: {
-        useBarCodeDetectorIfSupported: true
+    // Zona amplia: los EAN de cajas necesitan más anchura que un QR
+    const buildConfig = (useFormats) => {
+      const cfg = {
+        fps: 15,
+        qrbox: (viewW, viewH) => {
+          const width = Math.floor(viewW * 0.95);
+          const height = Math.floor(Math.min(viewH * 0.45, 180));
+          return { width: Math.max(250, width), height: Math.max(100, height) };
+        },
+        aspectRatio: 1.777,
+        disableFlip: false,
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        videoConstraints: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      };
+      if (useFormats && formatsToSupport && formatsToSupport.length) {
+        cfg.formatsToSupport = formatsToSupport;
       }
+      return cfg;
     };
-    if (formatsToSupport.length) config.formatsToSupport = formatsToSupport;
 
     const onSuccess = (decodedText) => {
       const target = scannerTargetId;
-      const code = (decodedText || '').trim();
+      let code = (decodedText || '').trim();
+      // Quitar espacios que a veces vienen en la lectura
+      code = code.replace(/\s+/g, '');
       if (!code) return;
       stopScanner();
       if (target === '_login_qr_') {
@@ -776,28 +784,44 @@ async function startScanner(targetInputId) {
       if (target === 'mov-barcode') lookupBarcodeForMov(code);
     };
 
-    // No silenciar del todo: útil en depuración
     const onError = () => {};
 
     let started = false;
-    const tryStart = async (cameraConfig) => {
-      await html5QrCode.start(cameraConfig, config, onSuccess, onError);
+    const tryStart = async (cameraIdOrConfig, useFormats) => {
+      const cfg = buildConfig(useFormats);
+      await html5QrCode.start(cameraIdOrConfig, cfg, onSuccess, onError);
       started = true;
     };
 
+    // 1) Cámara trasera + formatos farmacia
+    // 2) Si falla, sin filtro de formatos (algunos iPhone leen mejor así)
+    // 3) Otras cámaras
+    const attempts = [];
     try {
-      await tryStart({ facingMode: 'environment' });
+      await tryStart({ facingMode: 'environment' }, true);
     } catch (e1) {
-      console.warn('cam environment', e1);
+      console.warn('env+formats', e1);
+      attempts.push(e1);
       try {
-        await tryStart({ facingMode: 'user' });
+        await forceStopScannerInstance();
+        html5QrCode = new Html5Qrcode('scanner-container', { verbose: false });
+        await tryStart({ facingMode: 'environment' }, false);
       } catch (e2) {
-        console.warn('cam user', e2);
-        const cams = await Html5Qrcode.getCameras().catch(() => []);
-        if (cams && cams.length) {
-          await tryStart(cams[0].id);
-        } else {
-          throw e2 || e1;
+        console.warn('env sin formatos', e2);
+        attempts.push(e2);
+        try {
+          await forceStopScannerInstance();
+          html5QrCode = new Html5Qrcode('scanner-container', { verbose: false });
+          await tryStart({ facingMode: 'user' }, false);
+        } catch (e3) {
+          const cams = await Html5Qrcode.getCameras().catch(() => []);
+          if (cams && cams.length) {
+            await forceStopScannerInstance();
+            html5QrCode = new Html5Qrcode('scanner-container', { verbose: false });
+            await tryStart(cams[0].id, false);
+          } else {
+            throw attempts[0] || e3;
+          }
         }
       }
     }
