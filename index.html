@@ -703,14 +703,15 @@
   <div id="scanner-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:400;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
     <div id="scanner-container" style="width:100%;max-width:400px;border-radius:12px;overflow:hidden;"></div>
     <p style="color:#fff;text-align:center;margin:12px 16px 0;font-size:0.9rem;line-height:1.35">
-      Código de barras de la <strong>caja</strong> en horizontal, dentro de la franja.<br>
-      Luz buena · sin brillos · 10–20 cm · espera 2–3 s<br>
-      <span style="opacity:.85">Si no lee: escribe el número bajo las barras (ej. 8470006946923)</span>
+      Aleja la caja <strong>25–40 cm</strong> para que el iPhone pueda enfocar.<br>
+      Código horizontal · luz uniforme · quieto 2–3 s<br>
+      <span style="opacity:.85">Si no enfoca: usa el botón de foto (2 pasos) o escribe el número</span>
     </p>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px;width:100%;max-width:400px;padding:0 12px;box-sizing:border-box">
-      <button type="button" class="btn btn-secondary" onclick="scanBarcodeFromPhoto()">📷 Foto del código (si no lee en vivo)</button>
-      <input type="file" id="barcode-photo-input" accept="image/*" capture="environment" style="display:none" onchange="handleBarcodePhoto(event)">
-      <button type="button" class="btn btn-danger" onclick="stopScanner()">Cerrar cámara</button>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px;width:100%;max-width:400px;padding:0 12px;box-sizing:border-box;position:relative;z-index:500">
+      <button type="button" class="btn btn-secondary" id="btn-barcode-photo" onclick="prepareBarcodePhoto(event)">1 · Liberar cámara y preparar foto</button>
+      <button type="button" class="btn btn-primary" id="btn-barcode-photo-go" style="display:none" onclick="openBarcodePhotoPicker(event)">2 · Abrir cámara / galería</button>
+      <input type="file" id="barcode-photo-input" accept="image/*" capture="environment" style="position:fixed;left:-9999px;width:1px;height:1px;opacity:0" onchange="handleBarcodePhoto(event)">
+      <button type="button" class="btn btn-danger" onclick="stopScanner()">Cerrar</button>
     </div>
   </div>
 

@@ -672,6 +672,10 @@ function stopScanner() {
   scannerBusy = false;
   scannerTargetId = null;
   if (typeof stopNativeBarcodeAssist === 'function') stopNativeBarcodeAssist();
+  const go = document.getElementById('btn-barcode-photo-go');
+  const prep = document.getElementById('btn-barcode-photo');
+  if (go) go.style.display = 'none';
+  if (prep) prep.style.display = 'block';
   forceStopScannerInstance().then(() => {
     if (container) container.innerHTML = '';
   }).catch(() => {
@@ -743,20 +747,30 @@ async function startScanner(targetInputId) {
   try {
     html5QrCode = new Html5Qrcode('scanner-container', { verbose: false });
 
-    // Pantalla completa (sin qrbox): en iPhone el recorte impide leer EAN de cajas
+    // Enfoque continuo + más distancia (iPhone enfoca mal si acercas mucho el EAN)
+    // Sin qrbox = usa casi todo el encuadre; el código puede verse más pequeño y lejos
     const config = {
       fps: 10,
-      aspectRatio: 1.333,
-      disableFlip: false
+      aspectRatio: 1.777,
+      disableFlip: false,
+      videoConstraints: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        advanced: [
+          { focusMode: 'continuous' },
+          { exposureMode: 'continuous' },
+          { whiteBalanceMode: 'continuous' }
+        ]
+      }
     };
 
     const onError = () => {};
 
-    let camConfig = { facingMode: 'environment' };
+    let camConfig = { facingMode: { ideal: 'environment' } };
     try {
       const cams = await Html5Qrcode.getCameras();
       if (cams && cams.length) {
-        // Preferir cámara trasera por label
         const back = cams.find(c => /back|trasera|rear|environment/i.test(c.label || '')) || cams[cams.length - 1];
         camConfig = back.id;
       }
@@ -764,7 +778,32 @@ async function startScanner(targetInputId) {
 
     await html5QrCode.start(camConfig, config, applyCode, onError);
 
-    // Refuerzo: BarcodeDetector nativo (si el iOS/Safari lo trae)
+    // Suavizar zoom visual: ver más área (ayuda a mantener distancia de enfoque)
+    setTimeout(() => {
+      const vid = document.querySelector('#scanner-container video');
+      if (vid) {
+        vid.style.transform = 'scale(0.92)';
+        vid.style.transformOrigin = 'center center';
+        try {
+          const track = vid.srcObject && vid.srcObject.getVideoTracks && vid.srcObject.getVideoTracks()[0];
+          if (track && track.getCapabilities) {
+            const caps = track.getCapabilities();
+            const settings = {};
+            if (caps.focusMode && caps.focusMode.includes('continuous')) {
+              settings.focusMode = 'continuous';
+            }
+            // Zoom óptico/digital al mínimo si existe (más campo de visión)
+            if (caps.zoom) {
+              settings.zoom = caps.zoom.min || 1;
+            }
+            if (Object.keys(settings).length) {
+              track.applyConstraints({ advanced: [settings] }).catch(() => {});
+            }
+          }
+        } catch (e) { console.warn('focus constraints', e); }
+      }
+    }, 600);
+
     startNativeBarcodeAssist(applyCode);
   } catch (err) {
     console.error(err);
@@ -837,44 +876,99 @@ async function startNativeBarcodeAssist(onCode) {
   }
 }
 
-function scanBarcodeFromPhoto() {
+async function prepareBarcodePhoto(ev) {
+  if (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+  // iPhone: hay que liberar la cámara en vivo ANTES de abrir el selector de foto
+  showToast('Preparando cámara de foto…');
+  try {
+    await forceStopScannerInstance();
+  } catch (e) {}
+  stopNativeBarcodeAssist && stopNativeBarcodeAssist();
+  const container = document.getElementById('scanner-container');
+  if (container) container.innerHTML = '';
+  // Pequeña pausa para que iOS suelte el hardware
+  await new Promise(r => setTimeout(r, 400));
   const input = document.getElementById('barcode-photo-input');
-  if (input) input.click();
+  if (!input) {
+    showToast('No se encontró el selector de foto');
+    return;
+  }
+  input.value = '';
+  // click nativo en el mismo gesto del usuario (tras await puede fallar en iOS)
+  // Reintentar con label o input
+  // iOS bloquea input.click() tras await: mostrar 2º botón (gesto directo)
+  const go = document.getElementById('btn-barcode-photo-go');
+  const prep = document.getElementById('btn-barcode-photo');
+  if (go) {
+    go.style.display = 'block';
+    showToast('Pulsa “Abrir cámara / galería”');
+  } else {
+    try { input.click(); } catch (e) { showToast('Pulsa de nuevo'); }
+  }
+  if (prep) prep.style.display = 'none';
+}
+
+function openBarcodePhotoPicker(ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  const input = document.getElementById('barcode-photo-input');
+  if (!input) return;
+  input.value = '';
+  input.click();
+}
+
+function scanBarcodeFromPhoto() {
+  prepareBarcodePhoto();
 }
 
 async function handleBarcodePhoto(ev) {
   const file = ev.target.files && ev.target.files[0];
-  if (!file) return;
+  if (!file) {
+    showToast('No se eligió imagen');
+    return;
+  }
   if (typeof Html5Qrcode === 'undefined') {
     showToast('Escáner no cargado');
     return;
   }
   showToast('Analizando foto…');
   try {
-    // Instancia temporal solo para fichero
     const tmpId = 'scanner-file-tmp';
     let tmp = document.getElementById(tmpId);
     if (!tmp) {
       tmp = document.createElement('div');
       tmp.id = tmpId;
-      tmp.style.display = 'none';
+      tmp.style.cssText = 'width:1px;height:1px;overflow:hidden;position:absolute;left:-9999px';
       document.body.appendChild(tmp);
     }
-    const scanner = new Html5Qrcode(tmpId);
+    const scanner = new Html5Qrcode(tmpId, { verbose: false });
     const result = await scanner.scanFile(file, true);
     try { await scanner.clear(); } catch (e) {}
     if (result) {
-      if (typeof window.__barcodeApplyCode === 'function') window.__barcodeApplyCode(result);
-      else showToast('Código: ' + result);
+      const code = String(result).replace(/\s+/g, '').trim();
+      if (typeof window.__barcodeApplyCode === 'function') {
+        window.__barcodeApplyCode(code);
+      } else {
+        // Fallback si el overlay se cerró
+        const target = scannerTargetId || 'med-barcode';
+        const input = document.getElementById(target);
+        if (input) input.value = code;
+        showToast('Código leído: ' + code);
+        stopScanner();
+        if (target === 'mov-barcode') lookupBarcodeForMov(code);
+      }
     } else {
-      showToast('No se detectó código en la foto. Prueba más cerca y con más luz.');
+      showToast('No se detectó código. Foto más cerca solo de las barras.');
     }
   } catch (e) {
     console.error(e);
-    showToast('No se pudo leer la foto. Enfoca solo el código de barras.');
+    showToast('No se pudo leer. Prueba otra foto o escribe el número.');
   }
-  ev.target.value = '';
+  try { ev.target.value = ''; } catch (e) {}
 }
+
 
 async function lookupBarcodeForMov(barcode) {
   if (!barcode || barcode.trim().length < 3) return;
