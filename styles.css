@@ -745,3 +745,207 @@ body {
 .header h1, .header .user-info {
   text-shadow: 0 1px 4px rgba(0,0,0,0.55), 0 0 12px rgba(0,0,0,0.25);
 }
+
+
+/* ========== RESPONSIVE / MULTI-DISPOSITIVO v45 ========== */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  height: 100%;
+}
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+body {
+  min-height: 100dvh;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Inputs: 16px evita zoom automático en iOS al enfocar */
+input, select, textarea, button {
+  font-size: 16px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+input[type="search"],
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+textarea, select {
+  width: 100%;
+}
+
+#app {
+  min-height: 100dvh;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.header {
+  padding-top: calc(12px + env(safe-area-inset-top));
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.header-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
+}
+
+/* Filas de formulario: apilar en pantallas estrechas */
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.form-row > .form-group {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+/* Lista de medicamentos en movimiento: altura adaptable */
+#mov-med-select {
+  width: 100%;
+  max-height: min(40vh, 220px);
+  min-height: 6rem;
+}
+
+/* Bottom nav: scroll horizontal si no caben todos los iconos */
+.bottom-nav {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  justify-content: flex-start;
+  gap: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-bottom: calc(6px + env(safe-area-inset-bottom));
+}
+.bottom-nav::-webkit-scrollbar { display: none; }
+.bottom-nav .nav-item {
+  flex: 1 0 auto;
+  min-width: 56px;
+  max-width: 72px;
+  padding: 6px 4px;
+  font-size: 0.62rem;
+}
+.bottom-nav .nav-item .icon {
+  font-size: 1.2rem;
+}
+
+/* Modales: que quepan todos los campos en móvil */
+.modal-overlay {
+  align-items: flex-end;
+  padding: 0;
+  overflow: hidden;
+}
+.modal-overlay.show {
+  display: flex;
+}
+.modal {
+  width: 100%;
+  max-width: 100%;
+  max-height: min(92dvh, 100%);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 16px 16px 0 0;
+  padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
+  margin: 0;
+  box-sizing: border-box;
+}
+.modal-header {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 2;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.screen {
+  padding: 12px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.card, .med-item {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.flex, .flex-between, .flex.gap-8 {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+/* Login adaptable */
+#login-screen {
+  min-height: 100dvh;
+  padding: 16px;
+  padding-top: calc(16px + env(safe-area-inset-top));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  box-sizing: border-box;
+  padding: 28px 20px;
+}
+
+/* Tablets / pantallas anchas */
+@media (min-width: 600px) {
+  .modal-overlay {
+    align-items: center;
+    padding: 24px;
+  }
+  .modal {
+    max-width: 520px;
+    border-radius: 16px;
+    max-height: 90vh;
+  }
+  .bottom-nav {
+    justify-content: center;
+  }
+  .bottom-nav .nav-item {
+    max-width: 80px;
+  }
+  .screen {
+    padding: 20px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+}
+
+/* Muy estrecho (móviles pequeños) */
+@media (max-width: 380px) {
+  .header h1 { font-size: 1.05rem; }
+  .header-actions .btn-sm { padding: 6px 8px; font-size: 0.85rem; }
+  .bottom-nav .nav-item {
+    min-width: 48px;
+    font-size: 0.58rem;
+  }
+  .form-row > .form-group {
+    flex: 1 1 100%;
+  }
+  .btn {
+    padding: 10px 14px;
+  }
+}
+
+/* Landscape móvil: modal no ocupe todo si hay poco alto */
+@media (max-height: 500px) and (orientation: landscape) {
+  .modal {
+    max-height: 95dvh;
+    border-radius: 12px;
+  }
+  .bottom-nav .nav-item span:not(.icon) {
+    display: none;
+  }
+}
