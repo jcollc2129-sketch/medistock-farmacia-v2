@@ -1118,6 +1118,33 @@ function fillMotivos(tipo) {
   updateMedicoField();
 }
 
+function filterMovMedSelect() {
+  const q = ((document.getElementById('mov-med-search') || {}).value || '').toLowerCase().trim();
+  const select = document.getElementById('mov-med-select');
+  const hint = document.getElementById('mov-med-search-hint');
+  if (!select) return;
+  const all = window.__movMedOptions || [];
+  const filtered = q
+    ? all.filter(m => m.search.includes(q))
+    : all;
+  const current = select.value;
+  select.innerHTML = '<option value="">— Elige un medicamento —</option>';
+  filtered.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.label;
+    select.appendChild(opt);
+  });
+  if (current && filtered.some(m => String(m.id) === String(current))) {
+    select.value = current;
+  }
+  if (hint) {
+    hint.textContent = q
+      ? (filtered.length + ' resultado' + (filtered.length === 1 ? '' : 's'))
+      : (all.length + ' medicamentos · escribe para filtrar');
+  }
+}
+
 async function openMovimiento(tipo) {
   document.getElementById('mov-tipo').value = tipo;
   document.getElementById('form-mov-title').textContent = tipo === 'entrada' ? '➕ Nueva Entrada' : '➖ Nueva Salida';
@@ -1134,13 +1161,21 @@ async function openMovimiento(tipo) {
   const meds = await getMedicamentos();
   const select = document.getElementById('mov-med-select');
   select.innerHTML = '<option value="">— Elige un medicamento —</option>';
+  window.__movMedOptions = [];
   meds.sort((a, b) => (a.nombreComercial || '').localeCompare(b.nombreComercial || '')).forEach(m => {
+    const label = (m.nombreComercial || m.principioActivo || 'Sin nombre') + (m.barcode ? ` (${m.barcode})` : '');
+    const search = ((m.nombreComercial || '') + ' ' + (m.principioActivo || '') + ' ' + (m.barcode || '')).toLowerCase();
+    window.__movMedOptions.push({ id: m.id, label, search });
     const opt = document.createElement('option');
     opt.value = m.id;
-    opt.textContent = m.nombreComercial + (m.barcode ? ` (${m.barcode})` : '');
+    opt.textContent = label;
     select.appendChild(opt);
   });
-  
+  const searchInput = document.getElementById('mov-med-search');
+  if (searchInput) searchInput.value = '';
+  const hint = document.getElementById('mov-med-search-hint');
+  if (hint) hint.textContent = meds.length + ' medicamentos · escribe para filtrar';
+
   // Mostrar u ocultar campos según el tipo
   const nuevoLoteGroup = document.getElementById('nuevo-lote-group');
   const nuevoMedGroup = document.getElementById('nuevo-med-group');
@@ -2136,6 +2171,11 @@ function openExtraForm(modulo, id) {
   document.getElementById('extra-id').value = '';
   document.getElementById('extra-modulo').value = modulo;
   currentExtraPhoto = null;
+  const ebNew = document.getElementById('extra-barcode');
+  if (ebNew && !id) ebNew.value = '';
+  const ebg = document.getElementById('extra-barcode-group');
+  // Código de barras más útil en vacunas; también disponible en lab
+  if (ebg) ebg.style.display = 'block';
   const elLoteNew = document.getElementById('extra-lote');
   if (elLoteNew && !id) elLoteNew.value = '';
   const preview = document.getElementById('extra-foto-preview');
@@ -2147,6 +2187,8 @@ function openExtraForm(modulo, id) {
       if (!item) return;
       document.getElementById('extra-id').value = item.id;
       document.getElementById('extra-nombre').value = item.nombre || '';
+      const eb = document.getElementById('extra-barcode');
+      if (eb) eb.value = item.barcode || '';
       document.getElementById('extra-categoria').value = item.categoria || '';
       document.getElementById('extra-stock').value = item.stock != null ? item.stock : 0;
       document.getElementById('extra-stock-minimo').value = item.stockMinimo != null ? item.stockMinimo : 0;
@@ -2174,6 +2216,7 @@ async function saveExtraItem(e) {
     ubicacion: (document.getElementById('extra-ubicacion').value || '').trim() || null,
     caducidad: document.getElementById('extra-caducidad').value || null,
     lote: ((document.getElementById('extra-lote') || {}).value || '').trim() || null,
+    barcode: ((document.getElementById('extra-barcode') || {}).value || '').trim() || null,
     notas: (document.getElementById('extra-notas').value || '').trim() || null,
     foto: currentExtraPhoto || null,
     updatedAt: new Date().toISOString()
@@ -2216,7 +2259,7 @@ async function loadExtraList(modulo) {
       ${m.foto ? `<img class="med-photo" src="${m.foto}" alt="">` : `<div class="med-photo placeholder">${icon}</div>`}
       <div class="med-info">
         <div class="name">${escapeHtml(m.nombre)}</div>
-        <div class="principio">${escapeHtml(m.categoria || '')}${m.lote ? ' · Lote ' + escapeHtml(m.lote) : ''}${m.caducidad ? ' · Cad. ' + escapeHtml(m.caducidad) : ''}</div>
+        <div class="principio">${escapeHtml(m.categoria || '')}${m.barcode ? ' · 🏷 ' + escapeHtml(m.barcode) : ''}${m.lote ? ' · Lote ' + escapeHtml(m.lote) : ''}${m.caducidad ? ' · Cad. ' + escapeHtml(m.caducidad) : ''}</div>
         <div class="meta">
           <span class="badge ${bajo ? 'badge-bajo' : 'badge-stock'}">${stock}${min > 0 ? '/' + min : ''} uds</span>
           ${m.ubicacion ? ' · 📍 ' + escapeHtml(m.ubicacion) : ''}
@@ -2396,8 +2439,8 @@ async function openDetalleExtra(modulo, id) {
   document.getElementById('dx-id').value = id;
   document.getElementById('dx-titulo').textContent = item.nombre || '—';
   document.getElementById('dx-categoria').textContent = item.categoria || '—';
-  document.getElementById('dx-referencia').textContent = '—';
-  document.getElementById('dx-barcode').textContent = '—';
+  document.getElementById('dx-referencia').textContent = item.lote || '—';
+  document.getElementById('dx-barcode').textContent = item.barcode || '—';
   document.getElementById('dx-ubicacion').textContent = item.ubicacion || '—';
   document.getElementById('dx-tipo-stock').textContent = modulo === 'vacunas' ? 'Vacuna' : 'Laboratorio';
   document.getElementById('dx-stock').textContent = (item.stock != null ? item.stock : 0) + ' unidades';
@@ -2716,4 +2759,57 @@ async function removeKitItem(index) {
   showToast('Eliminado de la lista');
   scheduleSync();
   loadKitDetail();
+}
+
+
+// ========== Vacunas / lab: foto de código de barras ==========
+async function prepareExtraBarcodePhoto(ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  showToast('Abriendo cámara / galería…');
+  await new Promise(r => setTimeout(r, 200));
+  const input = document.getElementById('extra-barcode-photo-input');
+  if (!input) {
+    showToast('Selector de foto no disponible');
+    return;
+  }
+  input.value = '';
+  input.click();
+}
+
+async function handleExtraBarcodePhoto(ev) {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  if (typeof Html5Qrcode === 'undefined') {
+    showToast('Escáner no cargado. Abre la app con internet una vez.');
+    return;
+  }
+  showToast('Leyendo código de la foto…');
+  try {
+    const tmpId = 'extra-barcode-scan-tmp';
+    let tmp = document.getElementById(tmpId);
+    if (!tmp) {
+      tmp = document.createElement('div');
+      tmp.id = tmpId;
+      tmp.style.cssText = 'width:1px;height:1px;overflow:hidden;position:absolute;left:-9999px';
+      document.body.appendChild(tmp);
+    }
+    const scanner = new Html5Qrcode(tmpId, { verbose: false });
+    const result = await scanner.scanFile(file, true);
+    try { await scanner.clear(); } catch (e) {}
+    if (result) {
+      const code = String(result).replace(/\s+/g, '').trim();
+      const input = document.getElementById('extra-barcode');
+      if (input) {
+        input.value = code;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      showToast('Código leído: ' + code);
+    } else {
+      showToast('No se detectó código. Prueba otra foto más cerca.');
+    }
+  } catch (e) {
+    console.error(e);
+    showToast('No se pudo leer la foto. Escribe el código a mano.');
+  }
+  try { ev.target.value = ''; } catch (e) {}
 }

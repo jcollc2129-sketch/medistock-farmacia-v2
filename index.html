@@ -538,9 +538,14 @@
 
         <div class="form-group">
           <label>Seleccionar medicamento *</label>
-          <select id="mov-med-select" onchange="onMedSelectChange(this.value)">
+          <div class="flex gap-8" style="margin-bottom:8px;align-items:center">
+            <span style="font-size:1.1rem" title="Buscar">🔍</span>
+            <input type="search" id="mov-med-search" placeholder="Escribe nombre o principio activo…" style="flex:1" oninput="filterMovMedSelect()" autocomplete="off">
+          </div>
+          <select id="mov-med-select" size="6" onchange="onMedSelectChange(this.value)" style="width:100%;min-height:8rem">
             <option value="">— Elige un medicamento —</option>
           </select>
+          <p class="text-sm text-muted" id="mov-med-search-hint" style="margin-top:4px">Escribe arriba para filtrar la lista</p>
         </div>
 
         <div class="form-group">
@@ -893,6 +898,16 @@
         <div class="form-group">
           <label>Nombre *</label>
           <input type="text" id="extra-nombre" required>
+        </div>
+        <div class="form-group" id="extra-barcode-group">
+          <label>Código de barras</label>
+          <div class="flex gap-8" style="align-items:center">
+            <input type="text" id="extra-barcode" placeholder="Escribir o foto del código" style="flex:1">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="startScanner('extra-barcode')" title="Cámara">📷</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="prepareExtraBarcodePhoto(event)" title="Foto">🖼</button>
+          </div>
+          <input type="file" id="extra-barcode-photo-input" accept="image/*" capture="environment" style="position:fixed;left:-9999px;opacity:0;width:1px;height:1px" onchange="handleExtraBarcodePhoto(event)">
+          <p class="text-sm text-muted" style="margin-top:4px">En vacunas: puedes escribir el código o hacer foto (recomendado en iPhone)</p>
         </div>
         <div class="form-group">
           <label>Categoría / tipo</label>
