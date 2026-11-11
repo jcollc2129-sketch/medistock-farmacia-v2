@@ -14,10 +14,11 @@
 <body>
 
   <!-- ========== LOGIN ========== -->
-  <div id="login-screen">
+  <div id="login-screen" style="display:flex">
     <div class="login-card">
       <h1>💊 MediStock</h1>
       <p class="subtitle">Control de farmacia · Offline</p>
+      <p id="boot-status" class="text-sm text-muted text-center" style="min-height:1.2em"></p>
       <div id="login-error" class="error-msg"></div>
       <form id="login-form" onsubmit="handleLogin(event)">
         <div class="form-group">
@@ -42,7 +43,7 @@
   </div>
 
   <!-- ========== APP ========== -->
-  <div id="app">
+  <div id="app" style="display:none">
     <header class="header">
       <div>
         <h1>💊 MediStock</h1>

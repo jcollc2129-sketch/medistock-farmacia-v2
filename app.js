@@ -11,74 +11,119 @@ document.addEventListener('change', (e) => {
     updateMedicoField();
   }
 });
+function setBootStatus(msg) {
+  const el = document.getElementById('boot-status');
+  if (el) el.textContent = msg || '';
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-  // Register Service Worker
+  // 1) Mostrar login YA (Android no debe quedarse en blanco)
+  try {
+    const login = document.getElementById('login-screen');
+    const app = document.getElementById('app');
+    if (login) login.style.display = 'flex';
+    if (app) app.style.display = 'none';
+    setBootStatus('Iniciando…');
+  } catch (e) {}
+
+  // Service Worker en segundo plano (no bloquear login)
   if ('serviceWorker' in navigator) {
-    try {
-      await navigator.serviceWorker.register('./sw.js');
+    navigator.serviceWorker.register('./sw.js').then(() => {
       console.log('SW registered');
-    } catch (e) {
-      console.log('SW registration failed', e);
-    }
+    }).catch((e) => console.log('SW registration failed', e));
   }
 
-  await openDB();
-  // 1) Primero bajar la nube (Safari y app del icono no comparten IndexedDB)
   try {
-    if (navigator.onLine && typeof pullFromCloud === 'function') {
-      const r = await pullFromCloud();
-      if (r && r.imported) console.log('Nube importada al inicio');
-    }
-  } catch (e) { console.warn('pull inicio', e); }
-  try { if (typeof ensureKitsSeeded === "function") await ensureKitsSeeded(); } catch (e) {}
-  await initDefaultAdmin();
-  const seed = await seedDotacionIfEmpty();
-  if (seed.seeded) {
-    console.log('Dotación cargo cargada:', seed.count, 'medicamentos');
+    setBootStatus('Preparando base de datos…');
+    await openDB();
+    await initDefaultAdmin();
+    // Login usable de inmediato
+    checkSession();
+    setBootStatus('');
+
+    // 2) Nube + catálogos DESPUÉS (no bloquean la pantalla de usuario)
+    (async () => {
+      try {
+        if (navigator.onLine && typeof pullFromCloud === 'function') {
+          setBootStatus('Sincronizando…');
+          const r = await pullFromCloud();
+          if (r && r.imported) {
+            console.log('Nube importada al inicio');
+            // Si ya había sesión, refrescar pantallas
+            if (currentUser && typeof loadDashboard === 'function') {
+              try { loadDashboard(); } catch (e) {}
+            }
+          }
+        }
+      } catch (e) { console.warn('pull inicio', e); }
+
+      try { if (typeof ensureKitsSeeded === 'function') await ensureKitsSeeded(); } catch (e) {}
+      try {
+        const seed = await seedDotacionIfEmpty();
+        if (seed && seed.seeded) console.log('Dotación cargo:', seed.count);
+        const seed2 = await seedNoCargoIfEmpty();
+        if (seed2 && seed2.seeded) console.log('No cargo:', seed2.count);
+        const seed3 = await seedHospitalarioIfEmpty();
+        if (seed3 && seed3.seeded) console.log('Hospitalario:', seed3.count);
+        const seed4 = await seedEstupefacientesIfEmpty();
+        if (seed4 && seed4.seeded) console.log('Estupefacientes:', seed4.count);
+        if (typeof importarHospitalarioFaltante === 'function') {
+          const n = await importarHospitalarioFaltante();
+          if (n > 0) console.log('Hospitalario extra:', n);
+        }
+        if (typeof importarEstupefacientesFaltante === 'function') {
+          const n = await importarEstupefacientesFaltante();
+          if (n > 0) console.log('Estupefacientes extra:', n);
+        }
+        if (typeof seedMaterialIfEmpty === 'function') {
+          const sm = await seedMaterialIfEmpty();
+          if (sm && sm.seeded) console.log('Material cargo:', sm.count);
+        }
+        if (typeof seedMaterialNoCargoIfEmpty === 'function') {
+          const sm2 = await seedMaterialNoCargoIfEmpty();
+          if (sm2 && sm2.seeded) console.log('Material no cargo:', sm2.count);
+        }
+      } catch (err) { console.warn('seed', err); }
+      setBootStatus('');
+    })();
+  } catch (err) {
+    console.error('Init error', err);
+    setBootStatus('Error al iniciar. Recarga la página.');
+    try {
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('app').style.display = 'none';
+      const errBox = document.getElementById('login-error');
+      if (errBox) {
+        errBox.textContent = 'Error: ' + (err && err.message ? err.message : String(err));
+        errBox.style.display = 'block';
+      }
+    } catch (e2) {}
   }
-  const seed2 = await seedNoCargoIfEmpty();
-  if (seed2.seeded) {
-    console.log('No cargo cargados:', seed2.count, 'medicamentos');
-  }
-  const seed3 = await seedHospitalarioIfEmpty();
-  if (seed3.seeded) {
-    console.log('Hospitalario cargados:', seed3.count, 'medicamentos');
-  }
-  const seed4 = await seedEstupefacientesIfEmpty();
-  if (seed4.seeded) {
-    console.log('Estupefacientes cargados:', seed4.count);
-  }
-  // Siempre intentar completar catálogos (solo añade los que faltan)
-  try {
-    if (typeof importarHospitalarioFaltante === 'function') {
-      const h = await importarHospitalarioFaltante();
-      if (h > 0) console.log('Hospitalario extra:', h);
-    }
-    if (typeof importarEstupefacientesFaltante === 'function') {
-      const e = await importarEstupefacientesFaltante();
-      if (e > 0) console.log('Estupefacientes extra:', e);
-    }
-    if (typeof seedMaterialIfEmpty === 'function') {
-      const sm = await seedMaterialIfEmpty();
-      if (sm.seeded) console.log('Material cargo:', sm.count);
-    }
-    if (typeof seedMaterialNoCargoIfEmpty === 'function') {
-      const sm2 = await seedMaterialNoCargoIfEmpty();
-      if (sm2.seeded) console.log('Material no cargo:', sm2.count);
-    }
-  } catch (err) { console.warn(err); }
-  checkSession();
 });
 
 function checkSession() {
-  const saved = localStorage.getItem('medistock_user');
-  if (saved) {
-    currentUser = JSON.parse(saved);
-    showApp();
-  } else {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('app').style.display = 'none';
+  try {
+    const saved = localStorage.getItem('medistock_user');
+    if (saved) {
+      try {
+        currentUser = JSON.parse(saved);
+      } catch (e) {
+        localStorage.removeItem('medistock_user');
+        currentUser = null;
+      }
+      if (currentUser && currentUser.username) {
+        showApp();
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn(e);
   }
+  currentUser = null;
+  const login = document.getElementById('login-screen');
+  const app = document.getElementById('app');
+  if (login) login.style.display = 'flex';
+  if (app) app.style.display = 'none';
 }
 
 // ========== AUTH ==========
