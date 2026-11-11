@@ -6,12 +6,20 @@ let db = null;
 
 function openDB() {
   return new Promise((resolve, reject) => {
-    if (db) return resolve(db);
+    if (db) {
+      if (db.version >= DB_VERSION) return resolve(db);
+      try { db.close(); } catch (e) {}
+      db = null;
+    }
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
       db = request.result;
+      db.onversionchange = () => {
+        try { db.close(); } catch (e) {}
+        db = null;
+      };
       resolve(db);
     };
 
@@ -183,15 +191,38 @@ async function getMedicamentoById(id) {
 }
 
 async function getMedicamentoByBarcode(barcode) {
+  const code = String(barcode || '').replace(/\s+/g, '').trim();
+  if (!code) return null;
   const database = await openDB();
-  return new Promise((resolve, reject) => {
+  // 1) Índice exacto
+  const byIndex = await new Promise((resolve, reject) => {
+    try {
+      const tx = database.transaction('medicamentos', 'readonly');
+      const store = tx.objectStore('medicamentos');
+      if (!store.indexNames.contains('barcode')) {
+        resolve(null);
+        return;
+      }
+      const req = store.index('barcode').get(code);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    } catch (e) {
+      resolve(null);
+    }
+  });
+  if (byIndex) return byIndex;
+  // 2) Recorrer por si el código se guardó con espacios u otra forma
+  const all = await new Promise((resolve, reject) => {
     const tx = database.transaction('medicamentos', 'readonly');
-    const store = tx.objectStore('medicamentos');
-    const index = store.index('barcode');
-    const req = index.get(barcode);
-    req.onsuccess = () => resolve(req.result);
+    const req = tx.objectStore('medicamentos').getAll();
+    req.onsuccess = () => resolve(req.result || []);
     req.onerror = () => reject(req.error);
   });
+  const norm = (s) => String(s || '').replace(/\s+/g, '').trim();
+  return all.find(m => {
+    const b = norm(m.barcode);
+    return b && (b === code || b.endsWith(code) || code.endsWith(b));
+  }) || null;
 }
 
 async function addMedicamento(med) {

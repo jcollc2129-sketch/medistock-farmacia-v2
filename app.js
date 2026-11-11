@@ -330,12 +330,13 @@ async function loadInventario(filter = '') {
 
   let filtered = meds;
   if (q) {
-    filtered = meds.filter(m =>
-      (m.nombreComercial || '').toLowerCase().includes(q) ||
-      (m.principioActivo || '').toLowerCase().includes(q) ||
-      (m.barcode || '').includes(q) ||
-      (m.ubicacion || '').toLowerCase().includes(q)
-    );
+    filtered = meds.filter(m => {
+      const blob = [
+        m.nombreComercial, m.principioActivo, m.barcode, m.ubicacion,
+        m.presentacion, m.grupoTerapeutico, m.categoria, m.lote
+      ].join(' ');
+      return matchesSearchQuery(blob, q);
+    });
   }
 
   if (filtered.length === 0) {
@@ -1016,26 +1017,54 @@ async function handleBarcodePhoto(ev) {
 
 
 async function lookupBarcodeForMov(barcode) {
-  if (!barcode || barcode.trim().length < 3) return;
-  const med = await getMedicamentoByBarcode(barcode.trim());
+  const code = String(barcode || '').replace(/\s+/g, '').trim();
+  if (!code || code.length < 3) return;
+  const med = await getMedicamentoByBarcode(code);
   const nuevoMedGroup = document.getElementById('nuevo-med-group');
+  const select = document.getElementById('mov-med-select');
+  const searchInput = document.getElementById('mov-med-search');
+  const info = document.getElementById('mov-med-info');
+  const nombreEl = document.getElementById('mov-med-nombre');
+
   if (med) {
+    // Asegurar que el medicamento aparece en el select (aunque la lupa hubiera filtrado)
+    if (select) {
+      let opt = Array.from(select.options).find(o => String(o.value) === String(med.id));
+      if (!opt) {
+        opt = document.createElement('option');
+        opt.value = med.id;
+        opt.textContent = (med.nombreComercial || med.principioActivo || 'Medicamento') +
+          (med.barcode ? ' (' + med.barcode + ')' : '');
+        select.appendChild(opt);
+      }
+      select.value = String(med.id);
+    }
+    if (searchInput) {
+      searchInput.value = med.nombreComercial || med.principioActivo || '';
+    }
     document.getElementById('mov-med-id').value = med.id;
-    document.getElementById('mov-med-nombre').textContent = med.nombreComercial;
-    document.getElementById('mov-med-info').style.display = 'block';
-    updateMedicoField();
-    const select = document.getElementById('mov-med-select');
-    if (select) select.value = med.id;
+    if (nombreEl) {
+      nombreEl.textContent = (med.nombreComercial || med.principioActivo || 'Medicamento') +
+        (med.barcode ? ' · ' + med.barcode : '');
+    }
+    if (info) info.style.display = 'block';
     if (nuevoMedGroup) nuevoMedGroup.style.display = 'none';
-    loadLotesForMov(med.id);
+    if (typeof updateMedicoField === 'function') updateMedicoField();
+    if (typeof onMedSelectChange === 'function') {
+      try { await onMedSelectChange(String(med.id)); } catch (e) {}
+    } else {
+      loadLotesForMov(med.id);
+    }
+    showToast('Producto: ' + (med.nombreComercial || med.principioActivo || code));
   } else {
-    document.getElementById('mov-med-info').style.display = 'none';
+    if (info) info.style.display = 'none';
     document.getElementById('mov-med-id').value = '';
-    const select = document.getElementById('mov-med-select');
     if (select) select.value = '';
-    // Si es entrada, mostrar campos para crear el medicamento
     if (document.getElementById('mov-tipo').value === 'entrada' && nuevoMedGroup) {
       nuevoMedGroup.style.display = 'block';
+      showToast('Código no está en inventario. Puedes crear el medicamento.');
+    } else {
+      showToast('No hay medicamento con ese código de barras');
     }
   }
 }
@@ -1118,6 +1147,14 @@ function fillMotivos(tipo) {
   updateMedicoField();
 }
 
+/** Criba progresiva: cada palabra escrita debe aparecer en el texto */
+function matchesSearchQuery(haystack, query) {
+  const text = (haystack || '').toLowerCase();
+  const words = (query || '').toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  return words.every(w => text.includes(w));
+}
+
 function filterMovMedSelect() {
   const q = ((document.getElementById('mov-med-search') || {}).value || '').toLowerCase().trim();
   const select = document.getElementById('mov-med-select');
@@ -1125,7 +1162,7 @@ function filterMovMedSelect() {
   if (!select) return;
   const all = window.__movMedOptions || [];
   const filtered = q
-    ? all.filter(m => m.search.includes(q))
+    ? all.filter(m => matchesSearchQuery(m.search, q))
     : all;
   const current = select.value;
   select.innerHTML = '<option value="">— Elige un medicamento —</option>';
@@ -1743,11 +1780,9 @@ async function loadCargoList() {
     list = meds.filter(m => m.tipoStock === 'estupefaciente' || m.esEstupefaciente);
   }
   if (q) {
-    list = list.filter(m =>
-      (m.nombreComercial || '').toLowerCase().includes(q) ||
-      (m.principioActivo || '').toLowerCase().includes(q) ||
-      (m.presentacion || '').toLowerCase().includes(q)
-    );
+    list = list.filter(m => matchesSearchQuery(
+      [m.nombreComercial, m.principioActivo, m.barcode, m.ubicacion, m.categoria].join(' '), q
+    ));
   }
   list.sort((a, b) => (a.nombreComercial || '').localeCompare(b.nombreComercial || ''));
   const container = document.getElementById('cargo-list');
@@ -1972,6 +2007,29 @@ async function loadMaterialList() {
   el.innerHTML = html;
 }
 
+function filterMatMovSelect() {
+  const q = ((document.getElementById('mat-mov-search') || {}).value || '').toLowerCase().trim();
+  const select = document.getElementById('mat-mov-select');
+  const hint = document.getElementById('mat-mov-search-hint');
+  if (!select) return;
+  const all = window.__matMovOptions || [];
+  const filtered = q ? all.filter(m => matchesSearchQuery(m.search, q)) : all;
+  const current = select.value;
+  select.innerHTML = '<option value="">— Elige material —</option>';
+  filtered.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.label;
+    select.appendChild(opt);
+  });
+  if (current && filtered.some(m => String(m.id) === String(current))) select.value = current;
+  if (hint) {
+    hint.textContent = q
+      ? (filtered.length + ' resultado' + (filtered.length === 1 ? '' : 's'))
+      : (all.length + ' materiales · escribe para filtrar');
+  }
+}
+
 async function openMaterialMovimiento(tipo) {
   document.getElementById('mat-mov-tipo').value = tipo;
   document.getElementById('modal-mat-mov-title').textContent = tipo === 'entrada' ? 'Entrada de material' : 'Salida de material';
@@ -1982,8 +2040,17 @@ async function openMaterialMovimiento(tipo) {
   const mats = await getMateriales();
   mats.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
   const sel = document.getElementById('mat-mov-select');
+  window.__matMovOptions = mats.map(m => ({
+    id: m.id,
+    label: m.nombre || ('#' + m.id),
+    search: [m.nombre, m.categoria, m.referencia, m.ubicacion, m.barcode].join(' ').toLowerCase()
+  }));
+  const searchInput = document.getElementById('mat-mov-search');
+  if (searchInput) searchInput.value = '';
   sel.innerHTML = '<option value="">— Elige material —</option>' +
-    mats.map(m => `<option value="${m.id}">${escapeHtml(m.nombre)}</option>`).join('');
+    window.__matMovOptions.map(m => `<option value="${m.id}">${escapeHtml(m.label)}</option>`).join('');
+  const hint = document.getElementById('mat-mov-search-hint');
+  if (hint) hint.textContent = mats.length + ' materiales · escribe para filtrar';
 
   const motivo = document.getElementById('mat-mov-motivo');
   if (tipo === 'entrada') {
@@ -2243,7 +2310,7 @@ async function loadExtraList(modulo) {
   const list = await getExtraItems(modulo);
   const q = ((document.getElementById('search-' + modulo) || {}).value || '').toLowerCase().trim();
   let filtered = list;
-  if (q) filtered = list.filter(i => (i.nombre || '').toLowerCase().includes(q) || (i.categoria || '').toLowerCase().includes(q));
+  if (q) filtered = list.filter(i => matchesSearchQuery([i.nombre, i.categoria, i.barcode, i.lote, i.ubicacion].join(' '), q));
   filtered.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
   if (!filtered.length) {
     el.innerHTML = `<div class="empty-state"><div class="icon">${modulo === 'vacunas' ? '💉' : '🧪'}</div>Sin registros<br><button class="btn btn-primary mt-16" onclick="openExtraForm('${modulo}')">Añadir</button></div>`;

@@ -1,5 +1,5 @@
 /* MediStock SW — compatible Safari iOS (sin respuestas redirect) */
-const CACHE_NAME = 'medistock-v45';
+const CACHE_NAME = 'medistock-v47';
 const SHELL = [
   './index.html',
   './styles.css',

@@ -97,7 +97,7 @@
     <div id="screen-inventario" class="screen">
       <div class="search-box">
         <span class="search-icon">🔍</span>
-        <input type="search" id="search-inventario" placeholder="Buscar nombre, principio, código, ubicación..." oninput="filterInventario()">
+        <input type="search" id="search-inventario" placeholder="Escribe palabras: se va filtrando la lista…" oninput="filterInventario()">
       </div>
       <div id="med-list"></div>
       <button class="fab" onclick="openNuevoMed()" title="Nuevo medicamento">+</button>
@@ -148,7 +148,7 @@
       </div>
       <div class="search-box">
         <span class="search-icon">🔍</span>
-        <input type="search" id="search-material" placeholder="Buscar material..." oninput="loadMaterialList()">
+        <input type="search" id="search-material" placeholder="Escribe palabras: se va filtrando…" oninput="loadMaterialList()">
       </div>
       <div class="flex gap-8 mb-8">
         <button class="btn btn-sm btn-secondary" style="flex:1" onclick="openMaterialMovimiento('entrada')">＋ Entrada</button>
@@ -540,7 +540,7 @@
           <label>Seleccionar medicamento *</label>
           <div class="flex gap-8" style="margin-bottom:8px;align-items:center">
             <span style="font-size:1.1rem" title="Buscar">🔍</span>
-            <input type="search" id="mov-med-search" placeholder="Escribe nombre o principio activo…" style="flex:1" oninput="filterMovMedSelect()" autocomplete="off">
+            <input type="search" id="mov-med-search" placeholder="Ej: amoxi 500 · va filtrando…" style="flex:1" oninput="filterMovMedSelect()" autocomplete="off">
           </div>
           <select id="mov-med-select" size="6" onchange="onMedSelectChange(this.value)" style="width:100%;min-height:8rem">
             <option value="">— Elige un medicamento —</option>
@@ -846,7 +846,12 @@
         <input type="hidden" id="mat-mov-tipo" value="entrada">
         <div class="form-group">
           <label>Material *</label>
-          <select id="mat-mov-select" required></select>
+          <div class="flex gap-8" style="margin-bottom:8px;align-items:center">
+            <span title="Buscar">🔍</span>
+            <input type="search" id="mat-mov-search" placeholder="Ej: guante esteril · va filtrando…" style="flex:1" oninput="filterMatMovSelect()" autocomplete="off">
+          </div>
+          <select id="mat-mov-select" size="6" required style="width:100%;min-height:6rem;max-height:min(40vh,220px)"></select>
+          <p class="text-sm text-muted" id="mat-mov-search-hint" style="margin-top:4px">Escribe para filtrar la lista</p>
         </div>
         <div class="form-group">
           <label>Cantidad *</label>
