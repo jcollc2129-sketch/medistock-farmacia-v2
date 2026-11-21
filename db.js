@@ -379,9 +379,35 @@ async function getStockTotal(medicamentoId) {
   return lotes.reduce((sum, l) => sum + (l.cantidad || 0), 0);
 }
 
-async function initDefaultAdmin() {
+async function removeDemoAccounts() {
   const users = await getUsers();
+  for (const u of users) {
+    const isDemoOperario =
+      u.username === 'operario' ||
+      (u.nombre && String(u.nombre).toLowerCase().includes('operario demo'));
+    const isDemoAdminPassword =
+      u.username === 'admin' && u.password === 'admin123' && users.length > 1;
+    // Eliminar operario demo siempre; admin/admin123 solo si ya hay otras cuentas
+    if (isDemoOperario || isDemoAdminPassword) {
+      try {
+        await deleteUser(u.id);
+      } catch (e) {
+        // Si no se puede borrar, desactivar
+        try {
+          u.activo = false;
+          await updateUser(u);
+        } catch (e2) {}
+      }
+    }
+  }
+}
+
+async function initDefaultAdmin() {
+  await removeDemoAccounts();
+  let users = await getUsers();
   if (users.length === 0) {
+    // Solo primer arranque (base vacía): un admin de arranque.
+    // Cámbialo o crea el tuyo en Usuarios y evita dejar la clave por defecto.
     await addUser({
       username: 'admin',
       password: 'admin123',
@@ -390,16 +416,7 @@ async function initDefaultAdmin() {
       activo: true,
       qrToken: generateQrToken()
     });
-    await addUser({
-      username: 'operario',
-      password: 'operario123',
-      nombre: 'Operario Demo',
-      rol: 'operario',
-      activo: true,
-      qrToken: generateQrToken()
-    });
   } else {
-    // Asegurar que usuarios antiguos tengan token QR
     for (const u of users) {
       if (!u.qrToken) {
         u.qrToken = generateQrToken();
