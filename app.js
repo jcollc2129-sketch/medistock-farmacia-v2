@@ -5,6 +5,49 @@ let currentPhoto;
 let currentMaterialPhoto = null;
 let editingMedId = null;
 
+// ========== SESIÓN: auto-cierre 5 min (no admin) ==========
+const SESSION_IDLE_MS = 5 * 60 * 1000;
+let sessionIdleTimer = null;
+let sessionActivityBound = false;
+
+function isAdminUser() {
+  return currentUser && currentUser.rol === 'admin';
+}
+
+function clearSessionIdleTimer() {
+  if (sessionIdleTimer) {
+    clearTimeout(sessionIdleTimer);
+    sessionIdleTimer = null;
+  }
+}
+
+function resetSessionIdleTimer() {
+  clearSessionIdleTimer();
+  if (!currentUser || isAdminUser()) return;
+  sessionIdleTimer = setTimeout(() => {
+    if (!currentUser || isAdminUser()) return;
+    showToast('Sesión cerrada por inactividad (5 min)');
+    logout();
+  }, SESSION_IDLE_MS);
+}
+
+function bindSessionActivity() {
+  if (sessionActivityBound) return;
+  sessionActivityBound = true;
+  const events = ['pointerdown', 'touchstart', 'keydown', 'click', 'scroll'];
+  events.forEach(ev => {
+    document.addEventListener(ev, () => {
+      if (currentUser && !isAdminUser()) resetSessionIdleTimer();
+    }, { passive: true });
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && currentUser && !isAdminUser()) {
+      resetSessionIdleTimer();
+    }
+  });
+}
+
+
 // ========== INIT ==========
 document.addEventListener('change', (e) => {
   if (e.target && (e.target.id === 'mov-med-select' || e.target.id === 'mov-tipo' || e.target.id === 'mov-med-id')) {
@@ -146,6 +189,7 @@ async function handleLogin(e) {
 }
 
 function logout() {
+  clearSessionIdleTimer();
   currentUser = null;
   localStorage.removeItem('medistock_user');
   document.getElementById('app').style.display = 'none';
@@ -221,6 +265,8 @@ async function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('header-user').textContent = `${currentUser.nombre} (${currentUser.rol})`;
+  bindSessionActivity();
+  resetSessionIdleTimer();
   // Sincronizar al entrar
   try {
     const result = await pullFromCloud();
@@ -659,40 +705,222 @@ function capturePhoto() {
 }
 
 function handlePhotoSelect(e) {
-  const file = e.target.files[0];
+  const file = e.target.files && e.target.files[0];
   if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    // Compress a bit
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const maxW = 600;
-      let w = img.width;
-      let h = img.height;
-      if (w > maxW) {
-        h = (h * maxW) / w;
-        w = maxW;
-      }
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      currentPhoto = canvas.toDataURL('image/jpeg', 0.7);
-      const preview = document.getElementById('med-foto-preview');
-      preview.src = currentPhoto;
-      preview.style.display = 'block';
-    };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
+  readFileToCrop(file, 'med');
+  e.target.value = '';
 }
 
 function removePhoto() {
   currentPhoto = null;
   document.getElementById('med-foto-preview').style.display = 'none';
   document.getElementById('med-foto-input').value = '';
+}
+
+
+// ========== RECORTE DE FOTO ==========
+let cropTarget = null; // 'med' | 'material' | 'extra'
+let cropObjectUrl = null;
+let cropDrag = null;
+
+function openCropModal(dataUrl, target) {
+  cropTarget = target;
+  const modal = document.getElementById('modal-crop-foto');
+  const img = document.getElementById('crop-source-img');
+  if (!modal || !img) {
+    // fallback sin modal
+    applyCroppedDataUrl(dataUrl, target);
+    return;
+  }
+  img.onload = () => {
+    initCropBox();
+    modal.classList.add('show');
+  };
+  img.src = dataUrl;
+}
+
+function initCropBox() {
+  const stage = document.getElementById('crop-stage');
+  const img = document.getElementById('crop-source-img');
+  const box = document.getElementById('crop-box');
+  const range = document.getElementById('crop-size-range');
+  if (!stage || !img || !box) return;
+  const sw = stage.clientWidth;
+  const sh = img.clientHeight || stage.clientHeight;
+  const side = Math.min(sw, sh) * ((range ? range.value : 70) / 100);
+  const left = (sw - side) / 2;
+  const top = Math.max(0, (sh - side) / 2);
+  box.style.width = side + 'px';
+  box.style.height = side + 'px';
+  box.style.left = left + 'px';
+  box.style.top = top + 'px';
+  enableCropDrag(box, stage);
+}
+
+function resizeCropBox() {
+  const stage = document.getElementById('crop-stage');
+  const img = document.getElementById('crop-source-img');
+  const box = document.getElementById('crop-box');
+  const range = document.getElementById('crop-size-range');
+  if (!stage || !img || !box || !range) return;
+  const sw = stage.clientWidth;
+  const sh = img.clientHeight || stage.clientHeight;
+  const side = Math.min(sw, sh) * (Number(range.value) / 100);
+  let left = parseFloat(box.style.left) || 0;
+  let top = parseFloat(box.style.top) || 0;
+  // keep centered-ish if first resize
+  left = Math.min(Math.max(0, left), Math.max(0, sw - side));
+  top = Math.min(Math.max(0, top), Math.max(0, sh - side));
+  box.style.width = side + 'px';
+  box.style.height = side + 'px';
+  box.style.left = left + 'px';
+  box.style.top = top + 'px';
+}
+
+function enableCropDrag(box, stage) {
+  const onStart = (clientX, clientY) => {
+    cropDrag = {
+      startX: clientX,
+      startY: clientY,
+      origL: parseFloat(box.style.left) || 0,
+      origT: parseFloat(box.style.top) || 0
+    };
+  };
+  const onMove = (clientX, clientY) => {
+    if (!cropDrag) return;
+    const img = document.getElementById('crop-source-img');
+    const sw = stage.clientWidth;
+    const sh = (img && img.clientHeight) || stage.clientHeight;
+    const side = box.offsetWidth;
+    let left = cropDrag.origL + (clientX - cropDrag.startX);
+    let top = cropDrag.origT + (clientY - cropDrag.startY);
+    left = Math.min(Math.max(0, left), Math.max(0, sw - side));
+    top = Math.min(Math.max(0, top), Math.max(0, sh - side));
+    box.style.left = left + 'px';
+    box.style.top = top + 'px';
+  };
+  const onEnd = () => { cropDrag = null; };
+
+  box.onpointerdown = (e) => {
+    e.preventDefault();
+    box.setPointerCapture(e.pointerId);
+    onStart(e.clientX, e.clientY);
+  };
+  box.onpointermove = (e) => onMove(e.clientX, e.clientY);
+  box.onpointerup = onEnd;
+  box.onpointercancel = onEnd;
+}
+
+function getCroppedDataUrl() {
+  const img = document.getElementById('crop-source-img');
+  const box = document.getElementById('crop-box');
+  const stage = document.getElementById('crop-stage');
+  if (!img || !box || !stage) return null;
+
+  // Map box coords from displayed image to natural image
+  const dispW = img.clientWidth;
+  const dispH = img.clientHeight;
+  const natW = img.naturalWidth;
+  const natH = img.naturalHeight;
+  if (!dispW || !dispH || !natW || !natH) return null;
+
+  // Image may be letterboxed if object-fit contain — compute offset
+  const stageW = stage.clientWidth;
+  const stageH = Math.max(stage.clientHeight, dispH);
+  // With width 100% and height auto, image typically fills stage width
+  const scaleX = natW / dispW;
+  const scaleY = natH / dispH;
+
+  const boxL = parseFloat(box.style.left) || 0;
+  const boxT = parseFloat(box.style.top) || 0;
+  const boxS = box.offsetWidth;
+
+  let sx = boxL * scaleX;
+  let sy = boxT * scaleY;
+  let sw = boxS * scaleX;
+  let sh = boxS * scaleY;
+
+  sx = Math.max(0, Math.min(sx, natW - 1));
+  sy = Math.max(0, Math.min(sy, natH - 1));
+  sw = Math.max(1, Math.min(sw, natW - sx));
+  sh = Math.max(1, Math.min(sh, natH - sy));
+
+  const out = 400;
+  const canvas = document.createElement('canvas');
+  canvas.width = out;
+  canvas.height = out;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, out, out);
+  return canvas.toDataURL('image/jpeg', 0.72);
+}
+
+function applyCroppedDataUrl(dataUrl, target) {
+  const t = target || cropTarget;
+  if (t === 'material') {
+    currentMaterialPhoto = dataUrl;
+    const preview = document.getElementById('mat-foto-preview');
+    if (preview) { preview.src = dataUrl; preview.style.display = 'block'; }
+  } else if (t === 'extra') {
+    currentExtraPhoto = dataUrl;
+    const preview = document.getElementById('extra-foto-preview');
+    if (preview) { preview.src = dataUrl; preview.style.display = 'block'; }
+  } else {
+    currentPhoto = dataUrl;
+    const preview = document.getElementById('med-foto-preview');
+    if (preview) { preview.src = dataUrl; preview.style.display = 'block'; }
+  }
+  showToast('Foto lista');
+}
+
+function confirmCropFoto() {
+  const dataUrl = getCroppedDataUrl();
+  if (!dataUrl) {
+    showToast('No se pudo recortar');
+    return;
+  }
+  applyCroppedDataUrl(dataUrl, cropTarget);
+  closeCropModal();
+}
+
+function useFullCropFoto() {
+  const img = document.getElementById('crop-source-img');
+  if (!img || !img.src) {
+    closeCropModal();
+    return;
+  }
+  // compress full image to max 600
+  const canvas = document.createElement('canvas');
+  const maxW = 600;
+  let w = img.naturalWidth;
+  let h = img.naturalHeight;
+  if (w > maxW) {
+    h = (h * maxW) / w;
+    w = maxW;
+  }
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+  applyCroppedDataUrl(canvas.toDataURL('image/jpeg', 0.7), cropTarget);
+  closeCropModal();
+}
+
+function cancelCropFoto() {
+  closeCropModal();
+  showToast('Foto cancelada');
+}
+
+function closeCropModal() {
+  const modal = document.getElementById('modal-crop-foto');
+  if (modal) modal.classList.remove('show');
+  cropTarget = null;
+  cropDrag = null;
+}
+
+function readFileToCrop(file, target) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => openCropModal(ev.target.result, target);
+  reader.readAsDataURL(file);
 }
 
 // ========== BARCODE SCANNER ==========
@@ -1798,7 +2026,9 @@ async function loadCargoList() {
     const bajo = min > 0 && stock < min;
     html += `
       <div class="card med-item" onclick="openDetalleMed(${m.id})">
-        <div class="med-photo placeholder">${(m.tipoStock === 'estupefaciente' || m.esEstupefaciente) ? '⚠️' : (m.tipoStock === 'no_cargo' ? '📋' : (m.tipoStock === 'hospitalario' ? '🏥' : '📦'))}</div>
+        ${m.foto
+          ? `<img class="med-photo" src="${m.foto}" alt="">`
+          : `<div class="med-photo placeholder">${(m.tipoStock === 'estupefaciente' || m.esEstupefaciente) ? '⚠️' : (m.tipoStock === 'no_cargo' ? '📋' : (m.tipoStock === 'hospitalario' ? '🏥' : '📦'))}</div>`}
         <div class="med-info">
           <div class="name">${escapeHtml(m.nombreComercial || m.principioActivo)}</div>
           <div class="principio">${escapeHtml([m.presentacion, m.principioActivo].filter(Boolean).join(' · '))}</div>
@@ -2191,32 +2421,10 @@ function captureMaterialPhoto() {
 function handleMaterialPhotoSelect(e) {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const maxW = 600;
-      let w = img.width;
-      let h = img.height;
-      if (w > maxW) {
-        h = (h * maxW) / w;
-        w = maxW;
-      }
-      canvas.width = w;
-      canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      currentMaterialPhoto = canvas.toDataURL('image/jpeg', 0.7);
-      const preview = document.getElementById('mat-foto-preview');
-      if (preview) {
-        preview.src = currentMaterialPhoto;
-        preview.style.display = 'block';
-      }
-    };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
+  readFileToCrop(file, 'material');
+  e.target.value = '';
 }
+
 
 function removeMaterialPhoto() {
   currentMaterialPhoto = null;
@@ -2392,24 +2600,11 @@ function captureExtraPhoto() {
 function handleExtraPhotoSelect(e) {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const maxW = 600;
-      let w = img.width, h = img.height;
-      if (w > maxW) { h = (h * maxW) / w; w = maxW; }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      currentExtraPhoto = canvas.toDataURL('image/jpeg', 0.7);
-      const preview = document.getElementById('extra-foto-preview');
-      if (preview) { preview.src = currentExtraPhoto; preview.style.display = 'block'; }
-    };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
+  readFileToCrop(file, 'extra');
+  e.target.value = '';
 }
+
+
 function removeExtraPhoto() {
   currentExtraPhoto = null;
   const preview = document.getElementById('extra-foto-preview');

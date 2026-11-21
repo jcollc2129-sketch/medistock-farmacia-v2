@@ -949,3 +949,36 @@ textarea, select {
     display: none;
   }
 }
+
+
+/* Recorte de foto */
+.crop-stage {
+  position: relative;
+  width: 100%;
+  max-height: 55vh;
+  overflow: hidden;
+  background: #0f172a;
+  border-radius: 12px;
+  touch-action: none;
+  user-select: none;
+}
+.crop-stage img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 55vh;
+  object-fit: contain;
+  pointer-events: none;
+}
+.crop-box {
+  position: absolute;
+  border: 2px solid #14b8a6;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+  border-radius: 8px;
+  cursor: move;
+  box-sizing: border-box;
+}
+.med-photo {
+  object-fit: cover;
+  background: #e2e8f0;
+}
