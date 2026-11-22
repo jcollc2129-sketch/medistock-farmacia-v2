@@ -63,6 +63,23 @@ document.addEventListener('change', (e) => {
     updateMedicoField();
   }
 });
+async function resetAppCache() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) await r.unregister();
+    }
+    if (window.caches) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    showToast('Caché borrada. Recargando…');
+    setTimeout(() => location.reload(true), 600);
+  } catch (e) {
+    alert('Borra datos del sitio en Ajustes de Chrome y vuelve a entrar.');
+  }
+}
+
 function setBootStatus(msg) {
   const el = document.getElementById('boot-status');
   if (el) el.textContent = msg || '';

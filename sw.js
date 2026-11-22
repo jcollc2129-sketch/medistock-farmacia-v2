@@ -1,5 +1,5 @@
 /* MediStock SW v51 — Android/iOS PWA updates */
-const CACHE_NAME = 'medistock-v51';
+const CACHE_NAME = 'medistock-v52';
 const SHELL = [
   './',
   './index.html',
@@ -131,15 +131,22 @@ self.addEventListener('fetch', (event) => {
 
   if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
     event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      // 1) Intentar red (con timeout corto: QUIC colgado en Android)
       try {
-        const net = await fetch(req);
-        const cache = await caches.open(CACHE_NAME);
-        await cachePutSafe(cache, './index.html', net.clone());
-        return (await cleanResponse(net)) || net;
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 8000);
+        const net = await fetch(req, { signal: ctrl.signal });
+        clearTimeout(t);
+        if (net && net.ok) {
+          await cachePutSafe(cache, './index.html', net.clone());
+          return (await cleanResponse(net)) || net;
+        }
       } catch (e) {
-        const cache = await caches.open(CACHE_NAME);
-        return matchShell(cache);
+        console.log('SW navigate net fail', e);
       }
+      // 2) Caché / shell offline
+      return matchShell(cache);
     })());
     return;
   }
