@@ -4,6 +4,15 @@ let html5QrCode = null;
 let currentPhoto;
 let currentMaterialPhoto = null;
 let editingMedId = null;
+const BOTIQUINES_KIT_ID = 'botiquines';
+
+function matchesSearchQuery(haystack, query) {
+  const text = (haystack || '').toLowerCase();
+  const words = (query || '').toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  return words.every(w => text.includes(w));
+}
+
 
 // ========== SESIÓN: auto-cierre 5 min (no admin) ==========
 const SESSION_IDLE_MS = 5 * 60 * 1000;
@@ -69,11 +78,52 @@ document.addEventListener('DOMContentLoaded', async () => {
     setBootStatus('Iniciando…');
   } catch (e) {}
 
-  // Service Worker en segundo plano (no bloquear login)
+  // Si en 4s no terminó el arranque, forzar login visible
+  const bootWatchdog = setTimeout(() => {
+    try {
+      const login = document.getElementById('login-screen');
+      const app = document.getElementById('app');
+      if (login && (!app || app.style.display === 'none' || getComputedStyle(app).display === 'none')) {
+        login.style.display = 'flex';
+        setBootStatus('Listo. Introduce usuario y contraseña.');
+      }
+    } catch (e) {}
+  }, 4000);
+
+  // Service Worker: registrar + forzar actualización en Android PWA
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').then(() => {
+    navigator.serviceWorker.register('./sw.js').then(async (reg) => {
       console.log('SW registered');
+      try { await reg.update(); } catch (e) {}
+      if (reg.waiting) {
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            // Nueva versión lista
+            console.log('SW update ready');
+          }
+        });
+      });
     }).catch((e) => console.log('SW registration failed', e));
+    navigator.serviceWorker.addEventListener('message', (ev) => {
+      if (ev.data && ev.data.type === 'SW_UPDATED') {
+        // Una sola recarga controlada tras actualizar caché
+        if (!sessionStorage.getItem('medistock_sw_reloaded')) {
+          sessionStorage.setItem('medistock_sw_reloaded', '1');
+          setTimeout(() => location.reload(), 400);
+        }
+      }
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!sessionStorage.getItem('medistock_sw_reloaded2')) {
+        sessionStorage.setItem('medistock_sw_reloaded2', '1');
+        location.reload();
+      }
+    });
   }
 
   try {
@@ -83,6 +133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Login usable de inmediato
     checkSession();
     setBootStatus('');
+    try { clearTimeout(bootWatchdog); } catch (e) {}
 
     // 2) Nube + catálogos DESPUÉS (no bloquean la pantalla de usuario)
     (async () => {
@@ -1397,13 +1448,6 @@ function fillMotivos(tipo) {
   updateMedicoField();
 }
 
-/** Criba progresiva: cada palabra escrita debe aparecer en el texto */
-function matchesSearchQuery(haystack, query) {
-  const text = (haystack || '').toLowerCase();
-  const words = (query || '').toLowerCase().trim().split(/\s+/).filter(Boolean);
-  if (!words.length) return true;
-  return words.every(w => text.includes(w));
-}
 
 function filterMovMedSelect() {
   const q = ((document.getElementById('mov-med-search') || {}).value || '').toLowerCase().trim();
@@ -3121,7 +3165,6 @@ async function handleExtraBarcodePhoto(ev) {
 
 
 // ========== BOTIQUINES ==========
-const BOTIQUINES_KIT_ID = 'botiquines';
 let currentBotiquinUnidadId = null;
 let __botiquinItemOptions = [];
 
