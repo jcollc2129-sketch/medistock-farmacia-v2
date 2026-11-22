@@ -306,6 +306,8 @@ function navigate(screen) {
   if (screen === 'laboratorio') loadExtraList('laboratorio');
   if (screen === 'vacunas') loadExtraList('vacunas');
   if (screen === 'checklist') loadChecklistKits();
+  if (screen === 'botiquines') loadBotiquinesList();
+  if (screen === 'botiquin-detail') loadBotiquinDetail();
   if (screen === 'checklist-detail') {
     loadKitDetail();
     const navC = document.querySelector('.nav-item[data-screen="checklist"]');
@@ -318,6 +320,24 @@ function navigate(screen) {
 }
 
 // ========== DASHBOARD ==========
+async function appendBotiquinDashboardAlerts() {
+  try {
+    const box = document.getElementById('alertas-list');
+    if (!box) return;
+    const kit = await getKitById(BOTIQUINES_KIT_ID);
+    if (!kit) return;
+    const alerts = collectBotiquinAlerts(kit);
+    if (!alerts.length) return;
+    const html = alerts.slice(0, 8).map(t =>
+      `<div class="card med-item" onclick="openBotiquinesScreen()">
+        <div class="med-photo placeholder">🧰</div>
+        <div class="med-info"><div class="name">Botiquín</div><div class="principio">${escapeHtml(t)}</div></div>
+      </div>`
+    ).join('');
+    box.insertAdjacentHTML('beforeend', html);
+  } catch (e) {}
+}
+
 async function loadDashboard() {
   const meds = await getMedicamentos();
   const lotes = await getAllLotes();
@@ -349,6 +369,7 @@ async function loadDashboard() {
   const container = document.getElementById('recent-movs');
   if (recent.length === 0) {
     container.innerHTML = '<div class="empty-state"><div class="icon">📋</div>Sin movimientos aún</div>';
+    try { await appendBotiquinDashboardAlerts(); } catch (e) {}
     return;
   }
 
@@ -366,6 +387,7 @@ async function loadDashboard() {
       </div>`;
   }
   container.innerHTML = html;
+  try { await appendBotiquinDashboardAlerts(); } catch (e) {}
 }
 
 // ========== INVENTARIO ==========
@@ -2843,7 +2865,28 @@ async function loadChecklistKits() {
       const ib = order.indexOf(b.id);
       return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
     });
-    el.innerHTML = kits.map(k => {
+    // Ocultar el registro técnico botiquines de la lista de kits normales
+    kits = kits.filter(k => k.id !== 'botiquines' && k.tipo !== 'botiquines');
+    let botCard = '';
+    try {
+      const bot = await ensureBotiquinesRoot();
+      const nu = (bot.unidades || []).length;
+      const na = collectBotiquinAlerts(bot).length;
+      botCard = `<div class="card med-item" onclick="openBotiquinesScreen()" style="border:2px solid #0f766e">
+        <div class="med-photo placeholder">🧰</div>
+        <div class="med-info">
+          <div class="name">BOTIQUINES</div>
+          <div class="principio">${nu} unidad${nu === 1 ? '' : 'es'} · caducidad y reposición</div>
+          <div class="meta">${na ? `<span class="badge badge-bajo">${na} alerta${na === 1 ? '' : 's'}</span>` : `<span class="badge badge-stock">Sin alertas</span>`}</div>
+        </div>
+      </div>`;
+    } catch (e) {
+      botCard = `<div class="card med-item" onclick="openBotiquinesScreen()">
+        <div class="med-photo placeholder">🧰</div>
+        <div class="med-info"><div class="name">BOTIQUINES</div><div class="principio">Gestionar unidades</div></div>
+      </div>`;
+    }
+    el.innerHTML = botCard + kits.map(k => {
       const n = (k.items || []).length;
       const def = KIT_DEFINITIONS.find(d => d.id === k.id);
       const icon = (def && def.icon) || k.icon || '✅';
@@ -3074,4 +3117,390 @@ async function handleExtraBarcodePhoto(ev) {
     showToast('No se pudo leer la foto. Escribe el código a mano.');
   }
   try { ev.target.value = ''; } catch (e) {}
+}
+
+
+// ========== BOTIQUINES ==========
+const BOTIQUINES_KIT_ID = 'botiquines';
+let currentBotiquinUnidadId = null;
+let __botiquinItemOptions = [];
+
+function genBotiquinId(prefix) {
+  return (prefix || 'b') + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+}
+
+async function ensureBotiquinesRoot() {
+  await openDB();
+  let kit = await getKitById(BOTIQUINES_KIT_ID);
+  if (!kit) {
+    kit = {
+      id: BOTIQUINES_KIT_ID,
+      nombre: 'BOTIQUINES',
+      icon: '🧰',
+      tipo: 'botiquines',
+      unidades: [],
+      items: [],
+      updatedAt: new Date().toISOString()
+    };
+    await putKit(kit);
+  } else if (!Array.isArray(kit.unidades)) {
+    kit.unidades = kit.unidades || [];
+    await putKit(kit);
+  }
+  return kit;
+}
+
+async function openBotiquinesScreen() {
+  await ensureBotiquinesRoot();
+  navigate('botiquines');
+}
+
+async function loadBotiquinesList() {
+  const el = document.getElementById('botiquines-list');
+  const alertEl = document.getElementById('botiquines-alertas');
+  if (!el) return;
+  const kit = await ensureBotiquinesRoot();
+  const unidades = (kit.unidades || []).slice().sort((a, b) =>
+    String(a.numero || '').localeCompare(String(b.numero || ''), undefined, { numeric: true })
+  );
+
+  // Alertas globales botiquines
+  if (alertEl) {
+    const alerts = collectBotiquinAlerts(kit);
+    if (alerts.length) {
+      alertEl.innerHTML = `<div class="card" style="border-left:4px solid #f59e0b;padding:12px">
+        <strong>⚠️ Alertas botiquines</strong>
+        <ul style="margin:8px 0 0 18px;padding:0">${alerts.slice(0, 12).map(t => `<li class="text-sm">${escapeHtml(t)}</li>`).join('')}</ul>
+      </div>`;
+    } else {
+      alertEl.innerHTML = '';
+    }
+  }
+
+  if (!unidades.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">🧰</div>No hay botiquines<br>
+      <button class="btn btn-primary mt-16" onclick="openBotiquinUnidadForm()">＋ Añadir el primero</button></div>`;
+    return;
+  }
+
+  el.innerHTML = unidades.map(u => {
+    const nItems = (u.items || []).length;
+    const alerts = countBotiquinUnidadAlerts(u);
+    return `<div class="card med-item" onclick="openBotiquinUnidadDetail('${u.id}')">
+      <div class="med-photo placeholder">🧰</div>
+      <div class="med-info">
+        <div class="name">Botiquín ${escapeHtml(u.numero || '—')}</div>
+        <div class="principio">${escapeHtml(u.ubicacion || 'Sin ubicación')}</div>
+        <div class="meta">
+          <span class="badge badge-stock">${nItems} producto${nItems === 1 ? '' : 's'}</span>
+          ${alerts ? `<span class="badge badge-bajo">${alerts} alerta${alerts === 1 ? '' : 's'}</span>` : ''}
+        </div>
+      </div>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openBotiquinUnidadForm('${u.id}')">Editar</button>
+    </div>`;
+  }).join('');
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return Math.round((d - now) / 86400000);
+}
+
+function countBotiquinUnidadAlerts(u) {
+  let n = 0;
+  for (const it of (u.items || [])) {
+    if (it.caducidad) {
+      const days = daysUntil(it.caducidad);
+      if (days != null && days <= 30) n++;
+    } else if (it.hay === false || it.hay === 'no') {
+      n++;
+    }
+  }
+  return n;
+}
+
+function collectBotiquinAlerts(kit) {
+  const out = [];
+  for (const u of (kit.unidades || [])) {
+    const label = `Botiquín ${u.numero || '?'} (${u.ubicacion || 's/u'})`;
+    for (const it of (u.items || [])) {
+      const name = it.nombre || 'Producto';
+      if (it.caducidad) {
+        const days = daysUntil(it.caducidad);
+        if (days != null && days < 0) {
+          out.push(`${label}: ${name} CADUCADO (${it.caducidad})`);
+        } else if (days != null && days <= 30) {
+          out.push(`${label}: ${name} caduca en ${days} día${days === 1 ? '' : 's'} (${it.caducidad}) — reponer`);
+        }
+      } else if (it.hay === false || it.hay === 'no') {
+        out.push(`${label}: ${name} — NO HAY (reponer)`);
+      }
+    }
+  }
+  return out;
+}
+
+function openBotiquinUnidadForm(unidadId) {
+  document.getElementById('botiquin-unidad-id').value = unidadId || '';
+  document.getElementById('modal-botiquin-unidad-title').textContent = unidadId ? 'Editar botiquín' : 'Nuevo botiquín';
+  document.getElementById('botiquin-numero').value = '';
+  document.getElementById('botiquin-ubicacion').value = '';
+  document.getElementById('botiquin-notas').value = '';
+  if (unidadId) {
+    ensureBotiquinesRoot().then(kit => {
+      const u = (kit.unidades || []).find(x => x.id === unidadId);
+      if (u) {
+        document.getElementById('botiquin-numero').value = u.numero || '';
+        document.getElementById('botiquin-ubicacion').value = u.ubicacion || '';
+        document.getElementById('botiquin-notas').value = u.notas || '';
+      }
+    });
+  }
+  openModal('modal-botiquin-unidad');
+}
+
+async function saveBotiquinUnidad(e) {
+  e.preventDefault();
+  const id = document.getElementById('botiquin-unidad-id').value || genBotiquinId('bu');
+  const numero = document.getElementById('botiquin-numero').value.trim();
+  const ubicacion = document.getElementById('botiquin-ubicacion').value.trim();
+  const notas = document.getElementById('botiquin-notas').value.trim() || null;
+  if (!numero || !ubicacion) {
+    showToast('Número y ubicación son obligatorios');
+    return;
+  }
+  const kit = await ensureBotiquinesRoot();
+  kit.unidades = kit.unidades || [];
+  const idx = kit.unidades.findIndex(u => u.id === id);
+  if (idx >= 0) {
+    kit.unidades[idx] = { ...kit.unidades[idx], numero, ubicacion, notas };
+  } else {
+    kit.unidades.push({ id, numero, ubicacion, notas, items: [] });
+  }
+  kit.updatedAt = new Date().toISOString();
+  await putKit(kit);
+  closeModal('modal-botiquin-unidad');
+  showToast('Botiquín guardado');
+  if (typeof scheduleSync === 'function') scheduleSync();
+  loadBotiquinesList();
+}
+
+async function openBotiquinUnidadDetail(unidadId) {
+  currentBotiquinUnidadId = unidadId;
+  navigate('botiquin-detail');
+}
+
+async function loadBotiquinDetail() {
+  if (!currentBotiquinUnidadId) {
+    navigate('botiquines');
+    return;
+  }
+  const kit = await ensureBotiquinesRoot();
+  const u = (kit.unidades || []).find(x => x.id === currentBotiquinUnidadId);
+  if (!u) {
+    navigate('botiquines');
+    return;
+  }
+  document.getElementById('botiquin-detail-title').textContent = 'Botiquín ' + (u.numero || '');
+  document.getElementById('botiquin-detail-ubicacion').textContent = u.ubicacion || 'Sin ubicación';
+  const el = document.getElementById('botiquin-items-list');
+  const items = u.items || [];
+  if (!items.length) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">📦</div>Sin productos<br>
+      <button class="btn btn-primary mt-16" onclick="openBotiquinItemForm()">＋ Añadir producto</button></div>`;
+    return;
+  }
+  el.innerHTML = items.map((it, index) => {
+    let badge = '';
+    if (it.caducidad) {
+      const days = daysUntil(it.caducidad);
+      if (days != null && days < 0) badge = `<span class="badge badge-bajo">Caducado ${escapeHtml(it.caducidad)}</span>`;
+      else if (days != null && days <= 30) badge = `<span class="badge badge-bajo">Caduca en ${days}d · ${escapeHtml(it.caducidad)}</span>`;
+      else badge = `<span class="badge badge-stock">Cad. ${escapeHtml(it.caducidad)}</span>`;
+    } else if (it.hay === false || it.hay === 'no') {
+      badge = `<span class="badge badge-bajo">No hay — reponer</span>`;
+    } else {
+      badge = `<span class="badge badge-stock">Hay · sin caducidad</span>`;
+    }
+    const tipoLabel = it.tipo === 'material' ? 'Material' : (it.tipo === 'libre' ? 'Libre' : 'Medicamento');
+    return `<div class="card med-item">
+      <div class="med-photo placeholder">${it.tipo === 'material' ? '🩹' : '💊'}</div>
+      <div class="med-info">
+        <div class="name">${escapeHtml(it.nombre || '—')}</div>
+        <div class="principio">${tipoLabel}${it.cantidad != null ? ' · ' + it.cantidad + ' uds' : ''}</div>
+        <div class="meta">${badge}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button type="button" class="btn btn-sm btn-secondary" onclick="openBotiquinItemForm('${it.id}')">Editar</button>
+        <button type="button" class="btn btn-sm btn-danger" onclick="deleteBotiquinItem('${it.id}')">Quitar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function openBotiquinItemForm(itemId) {
+  if (!currentBotiquinUnidadId) return;
+  document.getElementById('botiquin-item-id').value = itemId || '';
+  document.getElementById('botiquin-item-tipo').value = 'medicamento';
+  document.getElementById('botiquin-item-nombre').value = '';
+  document.getElementById('botiquin-item-cantidad').value = '1';
+  document.getElementById('botiquin-item-caducidad').value = '';
+  document.getElementById('botiquin-item-hay').value = 'si';
+  document.getElementById('botiquin-item-notas').value = '';
+  document.getElementById('botiquin-item-search').value = '';
+  await fillBotiquinItemSelect();
+  onBotiquinItemTipoChange();
+  onBotiquinCadChange();
+  if (itemId) {
+    const kit = await ensureBotiquinesRoot();
+    const u = (kit.unidades || []).find(x => x.id === currentBotiquinUnidadId);
+    const it = u && (u.items || []).find(i => i.id === itemId);
+    if (it) {
+      document.getElementById('botiquin-item-tipo').value = it.tipo || 'medicamento';
+      onBotiquinItemTipoChange();
+      document.getElementById('botiquin-item-nombre').value = it.nombre || '';
+      document.getElementById('botiquin-item-cantidad').value = it.cantidad != null ? it.cantidad : 1;
+      document.getElementById('botiquin-item-caducidad').value = it.caducidad || '';
+      document.getElementById('botiquin-item-hay').value = (it.hay === false || it.hay === 'no') ? 'no' : 'si';
+      document.getElementById('botiquin-item-notas').value = it.notas || '';
+      await fillBotiquinItemSelect();
+      if (it.refId) {
+        const sel = document.getElementById('botiquin-item-ref');
+        if (sel) sel.value = String(it.refId);
+      }
+      onBotiquinCadChange();
+    }
+  }
+  openModal('modal-botiquin-item');
+}
+
+function onBotiquinItemTipoChange() {
+  const tipo = document.getElementById('botiquin-item-tipo').value;
+  const refG = document.getElementById('botiquin-item-ref-group');
+  const nomG = document.getElementById('botiquin-item-nombre-group');
+  if (tipo === 'libre') {
+    if (refG) refG.style.display = 'none';
+    if (nomG) nomG.style.display = 'block';
+  } else {
+    if (refG) refG.style.display = 'block';
+    if (nomG) nomG.style.display = 'none';
+    fillBotiquinItemSelect();
+  }
+}
+
+function onBotiquinCadChange() {
+  const cad = document.getElementById('botiquin-item-caducidad').value;
+  const hayG = document.getElementById('botiquin-item-hay-group');
+  if (hayG) hayG.style.display = cad ? 'none' : 'block';
+}
+
+async function fillBotiquinItemSelect() {
+  const tipo = document.getElementById('botiquin-item-tipo').value;
+  const sel = document.getElementById('botiquin-item-ref');
+  if (!sel) return;
+  if (tipo === 'medicamento') {
+    const meds = await getMedicamentos();
+    __botiquinItemOptions = meds.map(m => ({
+      id: m.id,
+      label: m.nombreComercial || m.principioActivo || ('#' + m.id),
+      search: [m.nombreComercial, m.principioActivo, m.barcode].join(' ').toLowerCase()
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  } else if (tipo === 'material') {
+    const mats = await getMateriales();
+    __botiquinItemOptions = mats.map(m => ({
+      id: m.id,
+      label: m.nombre || ('#' + m.id),
+      search: [m.nombre, m.categoria, m.referencia].join(' ').toLowerCase()
+    })).sort((a, b) => a.label.localeCompare(b.label));
+  } else {
+    __botiquinItemOptions = [];
+  }
+  filterBotiquinItemSelect();
+}
+
+function filterBotiquinItemSelect() {
+  const q = ((document.getElementById('botiquin-item-search') || {}).value || '').toLowerCase().trim();
+  const sel = document.getElementById('botiquin-item-ref');
+  if (!sel) return;
+  const all = __botiquinItemOptions || [];
+  const filtered = q && typeof matchesSearchQuery === 'function'
+    ? all.filter(o => matchesSearchQuery(o.search, q))
+    : (q ? all.filter(o => o.search.includes(q)) : all);
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Elige —</option>' +
+    filtered.map(o => `<option value="${o.id}">${escapeHtml(o.label)}</option>`).join('');
+  if (cur && filtered.some(o => String(o.id) === String(cur))) sel.value = cur;
+}
+
+async function saveBotiquinItem(e) {
+  e.preventDefault();
+  if (!currentBotiquinUnidadId) return;
+  const itemId = document.getElementById('botiquin-item-id').value || genBotiquinId('bi');
+  const tipo = document.getElementById('botiquin-item-tipo').value;
+  const cantidad = parseInt(document.getElementById('botiquin-item-cantidad').value) || 0;
+  const caducidad = document.getElementById('botiquin-item-caducidad').value || null;
+  const hayVal = document.getElementById('botiquin-item-hay').value;
+  const hay = caducidad ? true : (hayVal !== 'no');
+  const notas = document.getElementById('botiquin-item-notas').value.trim() || null;
+  let nombre = document.getElementById('botiquin-item-nombre').value.trim();
+  let refId = null;
+  if (tipo !== 'libre') {
+    refId = parseInt(document.getElementById('botiquin-item-ref').value);
+    if (!refId) {
+      showToast('Selecciona un producto');
+      return;
+    }
+    if (tipo === 'medicamento') {
+      const med = (await getMedicamentos()).find(m => m.id === refId);
+      nombre = med ? (med.nombreComercial || med.principioActivo) : nombre;
+    } else {
+      const mat = (await getMateriales()).find(m => m.id === refId);
+      nombre = mat ? mat.nombre : nombre;
+    }
+  }
+  if (!nombre) {
+    showToast('Indica el nombre del producto');
+    return;
+  }
+  const kit = await ensureBotiquinesRoot();
+  const u = (kit.unidades || []).find(x => x.id === currentBotiquinUnidadId);
+  if (!u) return;
+  u.items = u.items || [];
+  const row = { id: itemId, tipo, refId, nombre, cantidad, caducidad, hay, notas };
+  const idx = u.items.findIndex(i => i.id === itemId);
+  if (idx >= 0) u.items[idx] = row;
+  else u.items.push(row);
+  kit.updatedAt = new Date().toISOString();
+  await putKit(kit);
+  closeModal('modal-botiquin-item');
+  showToast('Producto guardado en botiquín');
+  if (typeof scheduleSync === 'function') scheduleSync();
+  loadBotiquinDetail();
+}
+
+async function deleteBotiquinItem(itemId) {
+  if (!currentBotiquinUnidadId || !confirm('¿Quitar este producto del botiquín?')) return;
+  const kit = await ensureBotiquinesRoot();
+  const u = (kit.unidades || []).find(x => x.id === currentBotiquinUnidadId);
+  if (!u) return;
+  u.items = (u.items || []).filter(i => i.id !== itemId);
+  kit.updatedAt = new Date().toISOString();
+  await putKit(kit);
+  if (typeof scheduleSync === 'function') scheduleSync();
+  loadBotiquinDetail();
+}
+
+async function deleteBotiquinUnidad(unidadId) {
+  if (!confirm('¿Eliminar este botiquín y todo su contenido?')) return;
+  const kit = await ensureBotiquinesRoot();
+  kit.unidades = (kit.unidades || []).filter(u => u.id !== unidadId);
+  kit.updatedAt = new Date().toISOString();
+  await putKit(kit);
+  if (typeof scheduleSync === 'function') scheduleSync();
+  if (currentBotiquinUnidadId === unidadId) currentBotiquinUnidadId = null;
+  loadBotiquinesList();
 }

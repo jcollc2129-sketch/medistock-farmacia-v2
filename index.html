@@ -133,6 +133,81 @@
       <div id="cargo-list"></div>
     </div>
 
+  <div class="modal-overlay" id="modal-botiquin-unidad">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-botiquin-unidad-title">Nuevo botiquín</h2>
+        <button class="modal-close" onclick="closeModal('modal-botiquin-unidad')">×</button>
+      </div>
+      <form id="form-botiquin-unidad" onsubmit="saveBotiquinUnidad(event)">
+        <input type="hidden" id="botiquin-unidad-id">
+        <div class="form-group">
+          <label>Número de botiquín *</label>
+          <input type="text" id="botiquin-numero" required placeholder="Ej: 1, B-03, URGENCIAS-2">
+        </div>
+        <div class="form-group">
+          <label>Ubicación *</label>
+          <input type="text" id="botiquin-ubicacion" required placeholder="Ej: Planta 1 · Sala de espera">
+        </div>
+        <div class="form-group">
+          <label>Notas</label>
+          <input type="text" id="botiquin-notas" placeholder="Opcional">
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar botiquín</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-botiquin-item">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Producto en botiquín</h2>
+        <button class="modal-close" onclick="closeModal('modal-botiquin-item')">×</button>
+      </div>
+      <form id="form-botiquin-item" onsubmit="saveBotiquinItem(event)">
+        <input type="hidden" id="botiquin-item-id">
+        <div class="form-group">
+          <label>Tipo *</label>
+          <select id="botiquin-item-tipo" onchange="onBotiquinItemTipoChange()">
+            <option value="medicamento">Medicamento</option>
+            <option value="material">Material sanitario</option>
+            <option value="libre">Nombre libre</option>
+          </select>
+        </div>
+        <div class="form-group" id="botiquin-item-ref-group">
+          <label>Producto del inventario *</label>
+          <input type="search" id="botiquin-item-search" placeholder="🔍 Filtrar…" oninput="filterBotiquinItemSelect()" style="margin-bottom:8px">
+          <select id="botiquin-item-ref" size="5" style="width:100%;min-height:6rem"></select>
+        </div>
+        <div class="form-group" id="botiquin-item-nombre-group" style="display:none">
+          <label>Nombre *</label>
+          <input type="text" id="botiquin-item-nombre" placeholder="Descripción del producto">
+        </div>
+        <div class="form-group">
+          <label>Cantidad</label>
+          <input type="number" id="botiquin-item-cantidad" min="0" value="1">
+        </div>
+        <div class="form-group">
+          <label>Caducidad</label>
+          <input type="date" id="botiquin-item-caducidad" onchange="onBotiquinCadChange()">
+          <p class="text-sm text-muted">Si no tiene fecha, indica si hay o no hay stock abajo.</p>
+        </div>
+        <div class="form-group" id="botiquin-item-hay-group">
+          <label>¿Hay producto? (si no hay caducidad)</label>
+          <select id="botiquin-item-hay">
+            <option value="si">Hay</option>
+            <option value="no">No hay (reponer)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Notas</label>
+          <input type="text" id="botiquin-item-notas" placeholder="Opcional">
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </form>
+    </div>
+  </div>
+
 
     <!-- MATERIAL SANITARIO (independiente) -->
     <div id="screen-material" class="screen">
@@ -210,7 +285,7 @@
     <!-- CHECKLIST MOCHILAS / CARROS -->
     <div id="screen-checklist" class="screen">
       <h2 class="section-title">✅ Checklist</h2>
-      <p class="text-sm text-muted mb-8">Listas fijas de medicamentos y material por mochila o carro (stock mínimo)</p>
+      <p class="text-sm text-muted mb-8">Mochilas, carros y botiquines · stock mínimo y caducidades</p>
       <div id="checklist-kits"></div>
     </div>
 
@@ -222,6 +297,27 @@
       <h2 class="section-title" id="kit-detail-title">—</h2>
       <p class="text-sm text-muted mb-8" id="kit-detail-hint">Dotación mínima de este equipo</p>
       <div id="kit-items-list"></div>
+    </div>
+
+    <div id="screen-botiquines" class="screen">
+      <div class="flex-between mb-8">
+        <button class="btn btn-sm btn-secondary" onclick="navigate('checklist')">← Volver</button>
+        <button class="btn btn-sm btn-primary" onclick="openBotiquinUnidadForm()">＋ Botiquín</button>
+      </div>
+      <h2 class="section-title">🧰 BOTIQUINES</h2>
+      <p class="text-sm text-muted mb-8">Varias unidades con número y ubicación. Dentro: material, medicamentos y caducidades.</p>
+      <div id="botiquines-alertas" class="mb-8"></div>
+      <div id="botiquines-list"></div>
+    </div>
+
+    <div id="screen-botiquin-detail" class="screen">
+      <div class="flex-between mb-8">
+        <button class="btn btn-sm btn-secondary" onclick="navigate('botiquines')">← Botiquines</button>
+        <button class="btn btn-sm btn-primary" onclick="openBotiquinItemForm()">＋ Producto</button>
+      </div>
+      <h2 class="section-title" id="botiquin-detail-title">—</h2>
+      <p class="text-sm text-muted mb-8" id="botiquin-detail-ubicacion">—</p>
+      <div id="botiquin-items-list"></div>
     </div>
 
     <nav class="bottom-nav">
