@@ -12,11 +12,19 @@
   <style id="critical-boot">
     html, body { margin:0; padding:0; min-height:100%; background:#0f766e; }
     #login-screen {
-      display:flex !important;
+      display:flex;
       min-height:100vh; min-height:100dvh;
       align-items:center; justify-content:center;
       padding:20px; box-sizing:border-box;
       background:#0f766e; color:#0f172a;
+    }
+    /* Tras login: ocultar de verdad (evita tener que desplazar para ver la app) */
+    #login-screen.is-hidden {
+      display:none !important;
+      visibility:hidden !important;
+      height:0 !important;
+      overflow:hidden !important;
+      pointer-events:none !important;
     }
     #login-screen .login-card {
       background:#fff; border-radius:16px; padding:28px 22px;
@@ -33,7 +41,7 @@
       width:100%; padding:12px; border:0; border-radius:10px;
       background:#0f766e; color:#fff; font-size:1rem; font-weight:600;
     }
-    #app { display:none !important; }
+    #app { display:none; }
     #app.show-app { display:block !important; }
   </style>
 
@@ -47,7 +55,7 @@
     try {
       var login = document.getElementById('login-screen');
       var app = document.getElementById('app');
-      if (login) login.style.display = 'flex';
+      if (login) { login.classList.remove('is-hidden'); login.style.display = 'flex'; }
       if (app) { app.style.display = 'none'; app.classList.remove('show-app'); }
       // Si en 5s no hay scripts, al menos se ve login
       setTimeout(function () {

@@ -1,5 +1,5 @@
-/* MediStock SW v54 — Android PWA blank-screen fix */
-const CACHE_NAME = 'medistock-v54';
+/* MediStock SW v55 — Android PWA blank-screen fix */
+const CACHE_NAME = 'medistock-v55';
 const SHELL = [
   './',
   './index.html',

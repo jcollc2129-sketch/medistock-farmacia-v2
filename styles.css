@@ -34,6 +34,13 @@ body {
 }
 
 /* ========== LOGIN ========== */
+#login-screen.is-hidden {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
 #login-screen {
   min-height: 100vh;
   display: flex;
@@ -885,6 +892,13 @@ textarea, select {
 }
 
 /* Login adaptable */
+#login-screen.is-hidden {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
 #login-screen {
   min-height: 100dvh;
   padding: 16px;

@@ -30,10 +30,7 @@ function setBootStatus(msg) {
 document.addEventListener('DOMContentLoaded', async () => {
   // 1) Mostrar login YA (Android no debe quedarse en blanco)
   try {
-    const login = document.getElementById('login-screen');
-    const app = document.getElementById('app');
-    if (login) login.style.display = 'flex';
-    if (app) app.style.display = 'none';
+    setLoginVisible(true);
     setBootStatus('Iniciando…');
   } catch (e) {}
 
@@ -112,6 +109,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+function setLoginVisible(show) {
+  const login = document.getElementById('login-screen');
+  const app = document.getElementById('app');
+  if (login) {
+    if (show) {
+      login.classList.remove('is-hidden');
+      login.style.display = 'flex';
+    } else {
+      login.classList.add('is-hidden');
+      login.style.display = 'none';
+    }
+  }
+  if (app) {
+    if (show) {
+      app.classList.remove('show-app');
+      app.style.display = 'none';
+    } else {
+      app.classList.add('show-app');
+      app.style.display = 'block';
+    }
+  }
+}
+
 function checkSession() {
   try {
     const saved = localStorage.getItem('medistock_user');
@@ -131,10 +151,7 @@ function checkSession() {
     console.warn(e);
   }
   currentUser = null;
-  const login = document.getElementById('login-screen');
-  const app = document.getElementById('app');
-  if (login) login.style.display = 'flex';
-  if (app) app.style.display = 'none';
+  setLoginVisible(true);
 }
 
 // ========== AUTH ==========
@@ -159,12 +176,11 @@ async function handleLogin(e) {
 function logout() {
   currentUser = null;
   localStorage.removeItem('medistock_user');
-  const appEl = document.getElementById('app');
-  if (appEl) { appEl.style.display = 'none'; appEl.classList.remove('show-app'); }
-  document.getElementById('login-screen').style.display = 'flex';
+  setLoginVisible(true);
   const form = document.getElementById('login-form');
   if (form) form.reset();
-  document.getElementById('login-error').style.display = 'none';
+  const errorEl = document.getElementById('login-error');
+  if (errorEl) errorEl.style.display = 'none';
   stopScanner();
 }
 
@@ -231,12 +247,7 @@ function closeModalQrUser() {
 
 
 async function showApp() {
-  document.getElementById('login-screen').style.display = 'none';
-  const appEl = document.getElementById('app');
-  if (appEl) {
-    appEl.style.display = 'block';
-    appEl.classList.add('show-app');
-  }
+  setLoginVisible(false);
   document.getElementById('header-user').textContent = `${currentUser.nombre} (${currentUser.rol})`;
   // Sincronizar al entrar
   try {
