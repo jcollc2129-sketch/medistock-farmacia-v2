@@ -159,9 +159,11 @@ async function handleLogin(e) {
 function logout() {
   currentUser = null;
   localStorage.removeItem('medistock_user');
-  document.getElementById('app').style.display = 'none';
+  const appEl = document.getElementById('app');
+  if (appEl) { appEl.style.display = 'none'; appEl.classList.remove('show-app'); }
   document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('login-form').reset();
+  const form = document.getElementById('login-form');
+  if (form) form.reset();
   document.getElementById('login-error').style.display = 'none';
   stopScanner();
 }
@@ -230,7 +232,11 @@ function closeModalQrUser() {
 
 async function showApp() {
   document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
+  const appEl = document.getElementById('app');
+  if (appEl) {
+    appEl.style.display = 'block';
+    appEl.classList.add('show-app');
+  }
   document.getElementById('header-user').textContent = `${currentUser.nombre} (${currentUser.rol})`;
   // Sincronizar al entrar
   try {

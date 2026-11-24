@@ -8,10 +8,55 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Control de entradas y salidas de medicamentos - Offline">
   <link rel="manifest" href="manifest.json">
+  
+  <style id="critical-boot">
+    html, body { margin:0; padding:0; min-height:100%; background:#0f766e; }
+    #login-screen {
+      display:flex !important;
+      min-height:100vh; min-height:100dvh;
+      align-items:center; justify-content:center;
+      padding:20px; box-sizing:border-box;
+      background:#0f766e; color:#0f172a;
+    }
+    #login-screen .login-card {
+      background:#fff; border-radius:16px; padding:28px 22px;
+      width:100%; max-width:380px; box-shadow:0 10px 40px rgba(0,0,0,.2);
+    }
+    #login-screen h1 { margin:0 0 8px; font-size:1.6rem; }
+    #login-screen .subtitle { color:#64748b; margin:0 0 16px; }
+    #login-screen label { display:block; font-size:.9rem; margin-bottom:4px; }
+    #login-screen input {
+      width:100%; box-sizing:border-box; padding:12px 14px;
+      border:1px solid #cbd5e1; border-radius:10px; font-size:16px; margin-bottom:12px;
+    }
+    #login-screen .btn-primary {
+      width:100%; padding:12px; border:0; border-radius:10px;
+      background:#0f766e; color:#fff; font-size:1rem; font-weight:600;
+    }
+    #app { display:none !important; }
+    #app.show-app { display:block !important; }
+  </style>
+
   <link rel="stylesheet" href="styles.css">
   <title>MediStock Farmacia</title>
 </head>
 <body>
+
+  <script>
+  (function () {
+    try {
+      var login = document.getElementById('login-screen');
+      var app = document.getElementById('app');
+      if (login) login.style.display = 'flex';
+      if (app) { app.style.display = 'none'; app.classList.remove('show-app'); }
+      // Si en 5s no hay scripts, al menos se ve login
+      setTimeout(function () {
+        if (login) login.style.display = 'flex';
+      }, 100);
+    } catch (e) {}
+  })();
+  </script>
+
 
   <!-- ========== LOGIN ========== -->
   <div id="login-screen" style="display:flex">
